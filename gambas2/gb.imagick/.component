@@ -1,0 +1,7 @@
+[Component]
+Key=gb.imagick
+Version=0.0.30
+State=2
+Authors=Geniv (geniv.radek@gmail.com)
+Needs=Form
+

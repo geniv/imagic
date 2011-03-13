@@ -1,0 +1,55 @@
+' Gambas class file
+
+
+PUBLIC SUB Form_Open()
+
+  'DIM hImagick AS Imagick
+
+  'hImagick = NEW Imagick("lena_std.tiff")
+
+  'PictureBox1.Picture = 
+  'PictureBox1.Picture = hImagick.getImage()
+
+  'PRINT hImagick.Version()
+
+END
+
+PUBLIC SUB Button1_Click()
+
+  DIM hImagick AS Imagick
+'test: http://valokuva.org/?p=42
+'func: http://eclecticdjs.com/mike/tutorials/php/imagemagick/
+  'hImagick = NEW Imagick
+  'hImagick = NEW Imagick("25909-bigthumbnail.jpg")
+  hImagick = NEW Imagick("opossum.jpg")
+  'hImagick = NEW Imagick("plasma.gif")
+  'hImagick = NEW Imagick("logo.png")
+  'hImagick = NEW Imagick("lenna.jpg")
+  'PRINT hImagick.Version()
+  'hImagick.newImage(200, 200, "black")
+  hImagick.resizeImage(0, 300, Imagick.FILTER_HANNING, 0, FALSE)
+  'hImagick.setSizeOffset(200, 200, 20)
+  'hImagick.shadeImage(TRUE, 45, 20)
+  'hImagick.shadowImage(80, 3, 5, 5)
+  'hImagick.sharpenImage(5, 3)
+  'hImagick.shaveImage(20, 30)
+  'hImagick.setImageFormat("gif")
+  'hImagick.shearImage("transparent", 20, 40)
+  'hImagick.sigmoidalContrastImage(1, 3, 50)
+  'hImagick.sketchImage(20, 10, 10)
+  'hImagick.solarizeImage(49500)
+  'hImagick.spliceImage(20, 20, 88, 62)
+  'hImagick.spreadImage(5)
+  'hImagick.swirlImage(180)
+  'hImagick.thresholdImage(16000)
+  'hImagick.thumbnailImage(100, 100, TRUE)
+  'hImagick.tintImage("#ff0088", 90)
+  'hImagick.transverseImage()
+  'hImagick.trimImage(10)
+  'hImagick.unsharpMaskImage(0, 10, 40, 50)
+  'hImagick.vignetteImage(1, 1, 0, 0)
+  'hImagick.waveImage(20, 176)
+
+  PictureBox1.Picture = hImagick.getImage()
+
+END

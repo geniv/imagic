@@ -1,0 +1,11 @@
+' Gambas module file
+
+PUBLIC SUB Main()
+
+  DIM hImagick AS Imagick
+
+  hImagick = NEW Imagick("lena_std.tiff")
+
+  'PRINT hImagick.Version()
+
+END

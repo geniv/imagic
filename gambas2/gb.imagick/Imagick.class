@@ -1,0 +1,364 @@
+' Gambas class file
+
+EXPORT
+'channel
+PUBLIC CONST CHANNEL_RED AS String = "Red"
+PUBLIC CONST CHANNEL_GRAY AS String = "Gray"
+PUBLIC CONST CHANNEL_CYAN AS String = "Cyan"
+PUBLIC CONST CHANNEL_GREEN AS String = "Green"
+PUBLIC CONST CHANNEL_MAGENTA AS String = "Magenta"
+PUBLIC CONST CHANNEL_BLUE AS String = "Blue"
+PUBLIC CONST CHANNEL_YELLOW AS String = "Yellow"
+PUBLIC CONST CHANNEL_ALPHA AS String = "Alpha"
+PUBLIC CONST CHANNEL_OPACITY AS String = "Opacity"
+PUBLIC CONST CHANNEL_BLACK AS String = "Black"
+PUBLIC CONST CHANNEL_INDEX AS String = "Index"
+PUBLIC CONST CHANNEL_ALL AS String = "All"
+PUBLIC CONST CHANNEL_RGB AS String = "RGB"
+PUBLIC CONST CHANNEL_RGBA AS String = "RGBA"
+PUBLIC CONST CHANNEL_CMYK AS String = "CMYK"
+PUBLIC CONST CHANNEL_CMYKA AS String = "CMYKA"
+'colorspace
+PUBLIC CONST COLORSPACE_RGB AS String = "RGB"
+PUBLIC CONST COLORSPACE_GRAY AS String = "Gray"
+PUBLIC CONST COLORSPACE_TRANSPARENT AS String = "Transparent"
+PUBLIC CONST COLORSPACE_OHTA AS String = "OHTA"
+PUBLIC CONST COLORSPACE_LAB AS String = "Lab"
+PUBLIC CONST COLORSPACE_XYZ AS String = "XYZ"
+PUBLIC CONST COLORSPACE_YCBCR AS String = "YCbCr"
+PUBLIC CONST COLORSPACE_YCC AS String = "YCC"
+PUBLIC CONST COLORSPACE_YIQ AS String = "YIQ"
+PUBLIC CONST COLORSPACE_YPBPR AS String = "YPbPr"
+PUBLIC CONST COLORSPACE_YUV AS String = "YUV"
+PUBLIC CONST COLORSPACE_CMYK AS String = "CMYK"
+PUBLIC CONST COLORSPACE_SRGB AS String = "sRGB"
+PUBLIC CONST COLORSPACE_HSB AS String = "HSB"
+PUBLIC CONST COLORSPACE_HSL AS String = "HSL"
+PUBLIC CONST COLORSPACE_HWB AS String = "HWB"
+PUBLIC CONST COLORSPACE_REC601LUMA AS String = "Rec601Luma"
+PUBLIC CONST COLORSPACE_REC709LUMA AS String = "Rec709Luma"
+PUBLIC CONST COLORSPACE_LOG AS String = "Log"
+PUBLIC CONST COLORSPACE_CMY AS String = "CMY"
+'img typy
+PUBLIC CONST IMGTYPE_BILEVEL AS String = "Bilevel"
+PUBLIC CONST IMGTYPE_GRAYSCALE AS String = "Grayscale"
+PUBLIC CONST IMGTYPE_GRAYSCALEMATTE AS String = "GrayscaleMatte"
+PUBLIC CONST IMGTYPE_PALETTE AS String = "Palette"
+PUBLIC CONST IMGTYPE_PALETTEMATTE AS String = "PaletteMatte"
+PUBLIC CONST IMGTYPE_TRUECOLOR AS String = "TrueColor"
+PUBLIC CONST IMGTYPE_TRUECOLORMATTE AS String = "TrueColorMatte"
+PUBLIC CONST IMGTYPE_COLORSEPARATION AS String = "ColorSeparation"
+PUBLIC CONST IMGTYPE_COLORSEPARATIONMATTE AS String = "ColorSeparationMatte"
+PUBLIC CONST IMGTYPE_OPTIMIZE AS String = "optimize"
+'filtry
+PUBLIC CONST FILTER_POINT AS String = "Point"
+PUBLIC CONST FILTER_BOX AS String = "Box"
+PUBLIC CONST FILTER_TRIANGLE AS String = "Triangle"
+PUBLIC CONST FILTER_HERMITE AS String = "Hermite"
+PUBLIC CONST FILTER_HANNING AS String = "Hanning"
+PUBLIC CONST FILTER_HAMMING AS String = "Hamming"
+PUBLIC CONST FILTER_BLACKMAN AS String = "Blackman"
+PUBLIC CONST FILTER_GAUSSIAN AS String = "Gaussian"
+PUBLIC CONST FILTER_QUADRATIC AS String = "Quadratic"
+PUBLIC CONST FILTER_CUBIC AS String = "Cubic"
+PUBLIC CONST FILTER_CATROM AS String = "Catrom"
+PUBLIC CONST FILTER_MITCHELL AS String = "Mitchell"
+PUBLIC CONST FILTER_LANCZOS AS String = "Lanczos"
+PUBLIC CONST FILTER_BESSEL AS String = "Bessel"
+PUBLIC CONST FILTER_SINC AS String = "Sinc"
+
+'PUBLIC CONST  AS String = ""
+
+'http://www.php.net/manual/en/imagick.constants.php#imagick.constants.channel
+'doimplementovat draw, zbyle funkce, porovnat s php verzi
+'http://www.imagemagick.org/script/command-line-options.php
+'http://eclecticdjs.com/mike/tutorials/php/imagemagick/imagick_1.php
+'http://eclecticdjs.com/mike/tutorials/php/imagemagick/imagick_2.php
+'http://eclecticdjs.com/mike/tutorials/php/imagemagick/examples_02/resize.php
+
+PRIVATE $pic AS NEW CImagick
+PRIVATE CONST sh_convert AS String = "convert"
+
+
+'vytvareni tridy
+PUBLIC SUB _new(OPTIONAL Path AS String)
+
+  DIM splnam AS String[]
+  DIM name, retshell AS String
+  DIM pic AS Picture
+
+  'test jestli imagick konzolva aplikace existuje
+  TRY SHELL Subst("echo -n $( which &1 )", sh_convert) WAIT TO retshell
+  IF retshell THEN 'pokud je utilita imagicka instalovana
+    $pic.picture = Temp()  'vytvoreni tempu
+    IF Exist(path) THEN 'overeni existence vlozeneho pathu
+      $pic.name = Path  'ulozeni nazvu obrazku
+      splnam = Split(Path, ".") 'rozdeleni nazvu podle tecky
+      $pic.format = Lower(splnam[splnam.Count - 1])  'posledni text za teckou, tj format
+      pic = Picture[Path]
+      $pic.width = pic.Width  'nacteni w
+      $pic.height = pic.Height  'nacteni h
+      $pic.depth = pic.Depth  'nacteni depth
+      name = Subst("&1.&2", $pic.picture, $pic.format)  'uprava jmena temp souboru
+      TRY COPY Path TO name 'zkopirovani zdroje do tempu
+      'TRY KILL $pic.picture
+      '$pic.picture = name
+      IF ERROR THEN 'kontrola chyby kopirovani
+        PRINT Subst(("Pri kopirovani sem &1 se neco pokazilo!"), $pic.picture)
+      ENDIF 'end error
+      TRY KILL $pic.picture 'smazani puvodniho tempu
+      $pic.picture = name 'pouziti noveho nazvu
+    ENDIF   'end exists
+      ELSE 
+    PRINT ("Neni naistalovana utilita: imagemagick!")
+  ENDIF 'end shell
+
+END
+
+
+'uvolneni obrazku z tempu
+PUBLIC SUB _free()
+
+  TRY KILL $pic.picture 'odmazani obrazku z tempu, po poziti
+
+END
+
+
+'vraceni verze imagick utility
+PUBLIC SUB Version() AS String
+
+  DIM retshell AS String
+
+  TRY SHELL Subst("&1 -version", sh_convert) WAIT TO retshell 
+  RETURN retshell
+
+END
+
+
+'vraceni obrazku pro picturebox
+PUBLIC SUB getImage() AS Picture
+'dodelat ochranu: ze pokud bude obrazek jineho typu tak si mistre nrevede do png!
+  IF $pic.format = "jpg" OR 
+     $pic.format = "png" OR 
+     $pic.format = "bmp" OR
+     $pic.format = "gif" OR
+     $pic.format = "xpm" THEN 
+    RETURN Picture[$pic.picture] 'pozor na vystupni format!
+      ELSE
+    PRINT ("Nepodporavany vystupni format obrazku!")
+  ENDIF 
+
+END
+
+
+'prepsani obrazku uvnitr
+PUBLIC SUB setImage({New} AS Variant) 'nebo typ variant?
+'dodelat, rozhodnout jakou funkci nakonec uzit!
+  'nastaveni obrazku z cesty
+  'z pathu 
+  'nebo z objektu imagicku <---
+
+END
+
+
+'vraceni nazvu obrazku
+PUBLIC SUB getFilename() AS String
+
+  RETURN $pic.name
+
+END
+
+
+'nastaveni noveho nazvu obrazku
+PUBLIC SUB setFilename(Name AS String)
+
+  IF Name THEN 
+    $pic.name = Name
+  ENDIF 
+
+END
+
+
+'vnitrni funkce pro provadeni uprav na obrazku
+PRIVATE SUB execConvert(command AS String)
+
+  TRY SHELL Subst("&1 &2 '&3' '&3'", sh_convert, command, $pic.picture) WAIT
+  IF ERROR THEN 
+    PRINT Subst(("Pri provadeni prikazu &1 se neco pokazilo!"), command)
+  ENDIF 
+
+END
+
+
+'vytvoreni noveho obrazku
+PUBLIC SUB newImage(columns AS Integer, rows AS Integer, background AS String, OPTIONAL {Format} AS String = "png")
+  DIM name AS String
+  DIM pic AS Picture
+  name = Subst("&1.&2", $pic.picture, Lower({Format})) 'slozeni jmena docasne docasneho souboru
+  TRY SHELL Subst("&1 -size &2x&3 xc:'&4' '&5'", sh_convert, columns, rows, background, name) WAIT 'musi se na konzolu pockat!
+  $pic.format = Lower({Format}) 'nastaveni koncovky
+  pic = Picture[name]
+  $pic.width = pic.Width  'nacteni w
+  $pic.height = pic.Height  'nacteni h
+  $pic.depth = pic.Depth  'nacteni depth
+  TRY COPY name TO $pic.picture 'prekopirovani do tempu
+  TRY KILL name 'smazani docasne docasneho tempu
+END
+
+PUBLIC SUB getImageDepth() AS Integer
+  'DIM retshell AS String
+  'takto dodelat! nacitat depth!!!!
+  'SHELL Subst("echo -n $( identify &1 | awk '{ print $5 }' | awk -F'-' '{ print $1 }' )", $pic.picture) WAIT TO retshell
+'DEBUG retshell
+  RETURN $pic.depth
+END
+
+
+PUBLIC SUB getQuantumRange() AS Long
+  RETURN (2 ^ $pic.depth) - 1 'musi byt z realneho depth!
+END
+
+
+PUBLIC SUB resizeImage(Columns AS Integer, Rows AS Integer, Filter AS String, Blur AS Float, Fit AS Boolean) 
+  DIM c, r, a AS String
+  c = IIf(Columns = 0, "", Columns)
+  r = IIf(Rows = 0, "", Rows)
+  a = IIf(Columns > 0 AND Rows > 0 AND NOT Fit, "!", "")
+  execConvert(Subst("-resize &1x&2&3 -filter &4 -blur &5", c, r, a, Filter, Blur))
+END
+
+PUBLIC SUB setImageFormat({Format} AS String) 
+  'komplexnejsi zmena, dodelat!
+  execConvert(Subst("-format '&1'", {Format}))
+END
+
+
+PUBLIC SUB setSizeOffset(Columns AS Integer, Rows AS Integer, Offset AS Integer)
+  execConvert(Subst("-size &1x&2+&3", Columns, Rows, Offset))
+END
+
+
+PUBLIC SUB setType(Image_type AS String)
+  execConvert(Subst("-type &1", Image_type))
+END
+
+
+PUBLIC SUB shadeImage(Gray AS Boolean, Azimuth AS Float, Elevation AS Float) 
+  DIM g AS String
+  g = IIf(Gray, "+", "-")
+  execConvert(Subst("&1shade &2x&3", g, Azimuth, Elevation))
+END
+
+
+PUBLIC SUB shadowImage(Opacity AS Float, Sigma AS Float, X AS Integer, Y AS Integer)
+  execConvert(Subst("-shadow &1x&2+&3+&4%", Opacity, Sigma, X, Y))
+END
+
+
+PUBLIC SUB sharpenImage(Radius AS Float, Sigma AS Float, OPTIONAL Channel AS String = ME.CHANNEL_ALL) 
+  execConvert(Subst("-sharpen &1x&2 -channel &3", Radius, Sigma, Channel))
+END
+
+
+PUBLIC SUB shaveImage(Columns AS Integer, Rows AS Integer) 
+  execConvert(Subst("-shave &1x&2", Columns, Rows))
+END
+
+
+PUBLIC SUB shearImage(Background AS String, X_shear AS Float, Y_shear AS Float) 
+  execConvert(Subst("-background '&1' -shear &2x&3", Background, X_shear, Y_shear))
+END
+
+
+PUBLIC SUB sigmoidalContrastImage(Sharpen AS Boolean, Contrast AS Float, Mid_point AS Float, OPTIONAL Channel AS String = ME.CHANNEL_ALL) 
+  DIM d AS String
+  d = IIf(Sharpen, "+", "-")
+  execConvert(Subst("&1sigmoidal-contrast &2x&3 -channel &4", d, Contrast, Mid_point, Channel))
+END
+
+
+PUBLIC SUB sketchImage(Radius AS Float, Sigma AS Float, Angle AS Float)
+  execConvert(Subst("-sketch &1x&2+&3", Radius, Sigma, Angle))
+END
+
+
+PUBLIC SUB solarizeImage(Threshold AS Integer) 
+  execConvert(Subst("-solarize &1", Threshold))
+END
+
+
+PUBLIC SUB spliceImage(Width AS Integer, Height AS Integer, X AS Integer, Y AS Integer)
+  execConvert(Subst("-splice &1x&2+&3+&4", Width, Height, X, Y))
+END
+
+
+PUBLIC SUB spreadImage(Radius AS Float) 
+  execConvert(Subst("-spread &1", Radius))
+END
+
+'steganoImage
+'stereoImage
+
+PUBLIC SUB stripImage()
+  execConvert("-strip")
+END
+
+
+PUBLIC SUB swirlImage(Degrees AS Float)
+  execConvert(Subst("-swirl &1", Degrees))
+END
+
+'textureImage
+
+
+PUBLIC SUB thresholdImage(Threshold AS Float, OPTIONAL Channel AS String = ME.CHANNEL_ALL) 
+  execConvert(Subst("-threshold &1 -channel &2", Threshold, Channel))
+END
+
+
+PUBLIC SUB thumbnailImage(Columns AS Integer, Rows AS Integer, OPTIONAL Fit AS Boolean)
+  DIM c, r, a AS String
+  c = IIf(Columns = 0, "", Columns)
+  r = IIf(Rows = 0, "", Rows)
+  a = IIf(Columns > 0 AND Rows > 0 AND NOT Fit, "!", "")
+  execConvert(Subst("-thumbnail &1x&2&3", c, r, a))
+  'DEBUG getQuantumRange()
+END
+
+
+PUBLIC SUB tintImage(Tint AS String, Opacity AS Integer)
+  execConvert(Subst("-fill '&1' -tint &2%", Tint, Opacity))
+END
+
+
+PUBLIC SUB transposeImage()
+  execConvert("-transpose")
+END
+
+
+PUBLIC SUB transverseImage()
+  execConvert("-transverse")
+END
+
+
+PUBLIC SUB trimImage(Fuzz AS Float)
+  execConvert(Subst("-trim -fuzz &1%", Fuzz))
+END
+
+
+PUBLIC SUB unsharpMaskImage(Radius AS Float, Sigma AS Float, Amount AS Float, Threshold AS Float)
+  execConvert(Subst("-unsharp &1x&2+&3+&4", Radius, Sigma, Amount, Threshold))
+END
+
+
+PUBLIC SUB vignetteImage(Radius AS Float, Sigma AS Float, X AS Integer, Y AS Integer)
+  execConvert(Subst("-vignette &1x&2+&3+&4%", Radius, Sigma, X, Y))
+END
+
+
+PUBLIC SUB waveImage(Amplitude AS Float, Length AS Float)
+  execConvert(Subst("-wave &1x&2", Amplitude, Length))
+END
+
+
+

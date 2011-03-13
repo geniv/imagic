@@ -1,0 +1,10 @@
+' Gambas class file
+
+'PUBLIC sh_convert AS String 'shell cesta k utilite convert
+PUBLIC picture AS String 'temp cesta pracovniho obrazku
+PUBLIC name AS String  'nazev pracovniho obrazku
+PUBLIC format AS String  'format pracovniho obrazku
+PUBLIC gravity AS String 'gravitace pracovniho obrazku
+PUBLIC width AS Integer 'sirka obrazku
+PUBLIC height AS Integer  'vyska obrazku
+PUBLIC depth AS Integer 'hloubka obrazku
