@@ -16,12 +16,15 @@
   $problem = 'img/problem.jpg';
 
   $picture = 'img/Answer_to_Life.png';
+  $picture1 = 'img/Answer_to_Life_fill.png';
   $picture2 = 'img/lena_std.tiff';
   $picture3 = 'img/25909-bigthumbnail.jpg';
 
-  $suffix = pathinfo($picture3, PATHINFO_EXTENSION);
+  $load_picture = $picture3;
+  $suffix = pathinfo($load_picture, PATHINFO_EXTENSION);
   $out1 = 'img/out1.'.$suffix;
   $out2 = 'img/out2.'.$suffix;
+
 
   $log1 = $log2 = array();
 
@@ -36,9 +39,11 @@
 
   $canvas = new Imagic();
   $canvas->setTempPath('img')
-          ->newImage(50, 50, 'gold')
+          //->newImage(50, 50, 'gold')
+          //->setImageFormat('jpg')
+          ->newPseudoImage(100, 100, 'gradient:blue-red')
           ->setImageFormat('jpg')
-          ->rotateImage('blue', 39)
+          ->rotateImage('skyblue', 39)
           //->setImageFilename('img/pokus1.jpg')
           //->writeImage()
           ;
@@ -46,7 +51,7 @@
   $points = array(0,0, 25,25,
                  100,0, 100,50);
 
-  $image = new Imagic($picture3);
+  $image = new Imagic($load_picture);
   $image->setTempPath('img')
         //->setImageFilename($picture2)
         //->setImageFormat('png')
@@ -54,7 +59,7 @@
         //->readImage($picture3)
         //->contrastStretchImage(1, 27, Imagic::CHANNEL_YELLOW)
         //->cropImage(200, 200, 50, 70)
-        //->cropThumbnailImage(200, 100)
+        //->cropThumbnailImage(150, 150)
         //->cycleColormapImage(1)
         //->deskewImage(10)
         //->despeckleImage()
@@ -72,14 +77,61 @@
         //->frameImage('#0000ff', 10, 10, 3, 3)
         //->functionImage(Imagic::FUNCTION_ARCTAN, array(1.0, 0.5, 1.0, 0.5))
         //->fxImage('(1.0/(1.0+exp(10.0*(0.5-u)))-0.006693)*1.0092503')
-        //->gammaImage(4)
+        //->gammaImage(4, Imagic::CHANNEL_RED)
         //->setCompression(Imagic::COMPRESSION_JPEG)
-        //->gaussianBlurImage(4, 4)
+        //->implodeImage(0.7)
+        //->levelImage(0, 1.5, 50000)
+        //->levelImage(0, 1.5, 50000, Imagic::CHANNEL_RED)
+        //->linearStretchImage(50000, 800)
+        //->magnifyImage()
+        //->medianFilterImage(10)
+        //->minifyImage()
+        //->modulateImage(100, 60, 80)
+        //->motionBlurImage(40, 5, 45)
+        //->negateImage(false)
+        //->normalizeImage(Imagic::CHANNEL_RED)
+        //->oilPaintImage(2)
+        //->paintOpaqueImage('black', 'red', 1000)
+        //->paintTransparentImage('black', 0.7, 10)
+        //->polaroidImage(new ImagicDraw, 15)
+        //->posterizeImage(2, false)
+        //->previewImages('Wave')
+        //->radialBlurImage(20)
+        //->raiseImage(10, 10, 140, 100, true)
+        //->randomThresholdImage(0.4*50000, 0.6*50000)
+        //->reduceNoiseImage(8)
+        //->resampleImage(100, 100, Imagic::FILTER_GAUSSIAN, 1.0)
+        //->rollImage(50, 50)
+        //->scaleImage(470, 470, true)
+        //->roundCorners(50, 50, 0, 5)  //, 1, 1, -3
+        //->separateImageChannel(Imagic::CHANNEL_RED)
+        //->sepiaToneImage(80)
+        //->shadeImage(true, 45, 30)
+        //->sharpenImage(10, 20)
+        //->shaveImage(100, 100)
+        //->shearImage('transparent', 20, 40)
+        //->sigmoidalContrastImage(false, 3, 50)
+        //->sketchImage(5, 3, 10)
+        //->solarizeImage(1000)
+        //->spliceImage(20, 20, 200, 100)
+        //->spreadImage(5)
+        //->swirlImage(90)
+        //->thresholdImage(20000)
+        //->tintImage('rgb(238, 180, 34)', 100)
+        //->trimImage(10)
+        //->uniqueImageColors()
+        //->unsharpMaskImage(0, 10, 40, 50)
+        //->setImageBackgroundColor('red')
+        //->vignetteImage(1, 1, 0, 0)
+        //->waveImage(20, 176)
+        //->sampleImage(200, 200)
+        //->scaleImage(300, 300, true)
+        //->gaussianBlurImage(10, 20, Imagic::CHANNEL_RED)
         //->setImage($canvas)
-        //->resizeImage(200, 200, Imagic::FILTER_HAMMING, 0, true)
-        ->thumbnailImage(200, 100, true)
+        //->resizeImage(400, 400, Imagic::FILTER_HAMMING, 0, true)
+        //->thumbnailImage(0, 200, true)
         //->adaptiveBlurImage(5, 3)
-        //->adaptiveBlurImage(5, '4a', Imagic::CHANNEL_RED)
+        //->adaptiveBlurImage(5, 4, Imagic::CHANNEL_RED)
         //->adaptiveResizeImage(0, 768)
         //->adaptiveResizeImage(100, 100, false)
         //->adaptiveResizeImage(200, 200, true)
@@ -93,22 +145,28 @@
         //->compositeImage($canvas, Imagic::COMPOSITE_OVER, 30, 40)
         //->borderImage('red', 10, 10)
         //->borderImage('gold', 5, 5)
-        //->compositeImage($canvas, Imagic::COMPOSITE_OVER, 180, 190)
+        //->compositeImage($canvas, Imagic::COMPOSITE_OVER, 100, 100)
         //->borderImage('blue', 2, 2)
         //->contrastImage(false)
         ->writeImage($out1)
         ;
 //echo $image->getImage();
-  $canvas->destroy();
+//var_dump($image->identifyImage());
+
   //$image->writeImage($out1);
 
   $log1[] = $image->getImageFilename();
   $log1[] = $image->getImageFormat();
-  $log1[] = $image->getImageHeight();
-  $log1[] = $image->getImageWidth();
+  $log1[] = 'w:'.$image->getImageWidth();
+  $log1[] = 'h:'.$image->getImageHeight();
   $log1[] = $image->getImageDelay();
   $log1[] = implode(', ', $image->getImagePage());
   $log1[] = ($image->getState() ? 'redy' : 'nekde je chyba');
+  //$log1[] = implode('<br />', $canvas->getCmd());
+  //$log1[] = implode('<br />', $image->getCmd());
+
+  $image->destroy();
+  $canvas->destroy();
 
 //var_dump($image->getImageGeometry());
 //var_dump($image->getImagePage());
@@ -129,13 +187,15 @@
     $draw->annotation(10, 40, 'nekoukej, kukuč :D');
 
     $canvas = new Imagick();
-    $canvas->newImage(50, 50, 'gold');
+    //$canvas->newImage(50, 50, 'gold');
+    $canvas->newPseudoImage(100, 100, 'radial-gradient:white-black');
+    //var_dump($canvas->getImageFormat());
     $canvas->setImageFormat('jpg');
     $canvas->rotateImage('blue', 39);
     //$canvas->setImageFilename('img/pokus.png');
     //$canvas->writeImage();
 
-    $image = new Imagick($picture3);
+    $image = new Imagick($load_picture);
     //$image->setImageFilename($picture2);
     //$image->setImageFormat('tiff');
     //$image->setImagePage(200, 200, 1, 1);
@@ -159,12 +219,64 @@
     //$image->frameImage('#0000ff', 10, 10, 3, 3);
     //$image->functionImage(Imagick::FUNCTION_ARCTAN, array(1.0, 0.5, 1.0, 0.5));
     //$image->fxImage('(1.0/(1.0+exp(10.0*(0.5-u)))-0.006693)*1.0092503');
-    //$image->gammaImage(4);
+    //$image->gammaImage(4, Imagick::CHANNEL_RED);
     //$image->setCompression(Imagick::COMPRESSION_JPEG);
-    //$image->gaussianBlurImage(4, 4);
+    //$image->gaussianBlurImage(10, 20, Imagick::CHANNEL_RED);
     //$image->setImage($canvas);
     //$image->resizeImage(200, 200, Imagick::FILTER_HAMMING, 0, true);
-    $image->thumbnailImage(200, 100, true);
+    //$image->thumbnailImage(200, 100, true);
+    //$image->setFont('Helvetica');
+    //var_dump($image->getFont());
+    //var_dump($image->identifyImage());
+    //$image->implodeImage(0.7);
+    //$image->labelImage('žluťoučký kůň');
+    //$image->levelImage(0, 1.5, 50000);
+    //$image->linearStretchImage(50000, 800);
+    //$image->magnifyImage();
+    //$image->medianFilterImage(10);
+    //$image->minifyImage();
+    //$image->modulateImage(100, 60, 80);
+    //$image->mosaicImages();
+    //$image->motionBlurImage(40, 5, 45);
+    //$image->negateImage(false);
+    //$image->normalizeImage(Imagick::CHANNEL_RED);
+    //$image->oilPaintImage(5);
+    //$image->paintOpaqueImage('black', 'red', 1000);
+    //$image->paintTransparentImage('black', 0.7, 10);
+    //$image->polaroidImage($draw, 15);
+    //$image->posterizeImage(2, false);
+    //$image->previewImages(Imagick::PREVIEW_IMPLODE);
+    //$image->radialBlurImage(20);
+    //$image->raiseImage(10, 10, 140, 100, true);
+    //$image->randomThresholdImage(0.4*50000, 0.6*50000);
+    //$image->reduceNoiseImage(8);
+    //$image->resampleImage(100, 100, Imagick::FILTER_GAUSSIAN, 1.0);
+    //$image->rollImage(50, 50);
+    //$image->setBackgroundColor('red');
+    //$image->setImageBackgroundColor('red');
+    //$image->roundCorners(50, 50, 0, 5);
+    //$image->separateImageChannel(Imagick::CHANNEL_RED);
+    //$image->sepiaToneImage(80);
+    //$image->shadeImage(true, 45, 30);
+    //$image->shadowImage(1, 2, -3, -4);
+    //$image->sharpenImage(10, 20);
+    //$image->shaveImage(100, 100);
+    //$image->shearImage('transparent', 20, 40);
+    //$image->sigmoidalContrastImage(false, 3, 50);
+    //$image->sketchImage(5, 3, 10);
+    //$image->solarizeImage(1000);
+    //$image->spliceImage(20, 20, 200, 100);
+    //$image->spreadImage(5);
+    //$image->swirlImage(90);
+    //$image->thresholdImage(20000);
+    //$image->tintImage('rgb(238, 180, 34)', 100);
+    //$image->trimImage(10);
+    //$image->uniqueImageColors();
+    //$image->unsharpMaskImage(0, 10, 40, 50);
+    //$image->vignetteImage(1, 1, 0, 0);
+    //$image->waveImage(20, 176);
+    //$image->sampleImage(200, 200);
+    //$image->scaleImage(300, 300, true);
     //var_dump($image->getCompression());
 //var_dump($image->getFont(), $image->getImage());
     //echo $image->getImage();
@@ -184,15 +296,15 @@
     //$image->compositeImage($canvas, Imagick::COMPOSITE_OVER, 30, 40);
     //$image->borderImage('red', 10, 10);
     //$image->borderImage('gold', 5, 5);
-    //$image->compositeImage($canvas, Imagick::COMPOSITE_OVER, 180, 190);
+    //$image->compositeImage($canvas, Imagick::COMPOSITE_OVER, 100, 100);
     //$image->borderImage('blue', 2, 2);
     //$image->contrastImage(false);
     $image->writeImage($out2);
 
     $log2[] = $image->getImageFilename();
     $log2[] = $image->getImageFormat();
-    $log2[] = $image->getImageHeight();
-    $log2[] = $image->getImageWidth();
+    $log2[] = 'w:'.$image->getImageWidth();
+    $log2[] = 'h:'.$image->getImageHeight();
     $log2[] = $image->getImageDelay();
     $log2[] = implode(', ', $image->getImagePage());
 

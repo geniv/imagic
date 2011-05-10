@@ -12,8 +12,12 @@
  * zpracovano s: Fluent Interfaces
  */
 
+  /**
+   *
+   * Library Imagic
+   *
+   */
   final class Imagic {
-    //protected $obrazek; //vnitrni ukazatel, deprecated
     protected $picture; //hlavni instance
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
@@ -299,12 +303,14 @@
         $this->picture->geometry = NULL;
         $this->picture->task = NULL;
         $this->picture->compress = NULL;
+        $this->picture->font = NULL;
         $this->picture->delay = 0;
         $this->picture->temp_path = '.';
         $this->picture->state = true;
         $this->picture->version = self::getVersion();
         $this->picture->_stream = NULL; //pro uklizeni streamu
         $this->picture->_remove = array();  //pro uklid prebytku
+        $this->picture->_debug = array();
 
         //nacteni obrazku do temp souboru
         if (!empty($files)) {
@@ -332,7 +338,7 @@
       $this->destroy();
     }
 //------------------------------------------------------------------------------
-    //redy
+    //bool destroy ( void )
     public function destroy() {
       //hlavni uklid
       if (!empty($this->picture->_stream)) {
@@ -355,7 +361,7 @@
       //pac temp se dokaze zaplnit i pri neuspesnem pokusu o vygeneorvani
       //kontrolovat dle data stari, max tak 24hodin stare mazat
 /*
-      $temp_path = realpath($this->tempdir);
+      $temp_path = $this->tempdir;
       $files = scandir($temp_path);
       if (!empty($files)) {
         foreach ($files as $file) {
@@ -412,7 +418,7 @@
       return $result;
     }
 //------------------------------------------------------------------------------
-    //redy
+    //array getVersion ( void )
     public static function getVersion($key = NULL) {
       $version = exec('identify -version | head -n 1 | cut -c 10-');
       preg_match('/\d\.\d\.\d/', $version, $match);
@@ -427,26 +433,70 @@
 
       if (file_exists($file) &&
           filesize($file) > 0) {
-        $identify = explode(' ', exec(sprintf('identify %s', $file)));
+        $identifyexec = exec(sprintf('identify \'%s\'', $file));
+        $filestrlen = mb_strlen($file);
+        $identifysubstr = mb_substr($identifyexec, $filestrlen + 1);
+        $identifyexplode = explode(' ', $identifysubstr);
         //exec(sprintf('identify -verbose %s', $file), $identify_verbose);
       } else {
         echo 'smazis se zase nacist neexistujici a nebo prazdny obrazek!';
+        var_dump($file, $this->picture);
         exit(1);
       }
 
-      $this->picture->path = $identify[0];  //realpath()
-      $this->picture->format = $identify[1];
-
-      $size_split = preg_split('/x|\+/', $identify[2]);
+      $this->picture->path = $file;
+      $this->picture->format = $identifyexplode[0];
+//TODO kdyby blbnulo tak by se pouzije identify -verbose %s
+      $size_split = preg_split('/x|\+/', $identifyexplode[1]);
       $this->picture->size = array ('width' => (int) $size_split[0],
                                     'height' => (int) $size_split[1]);
 
-      $geometry_split = preg_split('/x|\+/', $identify[3]);
+      $geometry_split = preg_split('/x|\+/', $identifyexplode[2]);
       $this->picture->geometry = array ('width' => (int) $geometry_split[0],
                                         'height' => (int) $geometry_split[1],
                                         'x' => (int) $geometry_split[2],
                                         'y' => (int) $geometry_split[3]);
       //$this->picture->verbose = $identify_verbose;
+    }
+
+    //array identifyImage ([ bool $appendRawOutput = false ] )
+    public function identifyImage($appendRawOutput = false) {
+      $result = array();
+      exec(sprintf('identify -verbose \'%s\'', $this->picture->path), $identifyverbose);
+
+      $match = implode('', preg_grep('/Image\:/', $identifyverbose));
+      $result['imageName'] = substr($match, 7);
+
+      $match = implode('', preg_grep('/Format\:/', $identifyverbose));
+      $result['format'] = substr($match, 10);
+
+      $result['geometry'] = $this->picture->size;
+
+      $match = implode('', preg_grep('/Resolution\:/', $identifyverbose));
+      $resolution_split = preg_split('/x/', substr($match, 14));
+      $result['resolution'] = array('x' => (float) $resolution_split[0],
+                                    'y' => (float) $resolution_split[1]);
+
+      $match = implode('', preg_grep('/Units\:/', $identifyverbose));
+      $result['units'] = substr($match, 9);
+
+      $match = implode('', preg_grep('/Type\:/', $identifyverbose));
+      $result['type'] = substr($match, 8);
+
+      $match = implode('', preg_grep('/Colorspace\:/', $identifyverbose));
+      $result['colorSpace'] = substr($match, 14);
+
+      $match = implode('', preg_grep('/Compression\:/', $identifyverbose));
+      $result['compression'] = substr($match, 15);
+
+      $match = implode('', preg_grep('/Filesize\:/', $identifyverbose));
+      $result['fileSize'] = substr($match, 12);
+
+      if ($appendRawOutput) {
+        $result['rawOutput'] = implode("\n", $identifyverbose);
+      }
+
+      return $result;
     }
 //------------------------------------------------------------------------------
     //redy
@@ -460,39 +510,39 @@
       return $this;
     }
 //------------------------------------------------------------------------------
-    //redy
+    //string getImageFilename ( void )
     public function getImageFilename() {
       return $this->picture->path;
     }
 
-    //redy
+    //bool setImageFilename ( string $filename )
     public function setImageFilename($filename) {
-      $this->picture->path = $filename; //realpath()
+      $this->picture->path = $filename;
       return $this;
     }
 //------------------------------------------------------------------------------
-    //redy
+    //string getImageFormat ( void )
     public function getImageFormat() {
       return $this->picture->format;
     }
 
-    //redy
+    //bool setImageFormat ( string $format )
     public function setImageFormat($format) {
       $this->picture->format = $format;
       return $this;
     }
 //------------------------------------------------------------------------------
-    //redy
+    //array getImageGeometry ( void )
     public function getImageGeometry() {
       return $this->picture->size;
     }
 //------------------------------------------------------------------------------
-    //redy
+    //array getImagePage ( void )
     public function getImagePage() {
       return $this->picture->geometry;
     }
 
-    //redy
+    //bool setImagePage ( int $width , int $height , int $x , int $y )
     public function setImagePage($width, $height, $x, $y) {
       $this->picture->geometry = array ('width' => (int) $width,
                                         'height' => (int) $height,
@@ -501,39 +551,66 @@
       return $this;
     }
 //------------------------------------------------------------------------------
-    //redy
+    //int getImageHeight ( void )
     public function getImageHeight() {
       return $this->picture->size['height'];
     }
 //------------------------------------------------------------------------------
-    //redy
+    //int getImageWidth ( void )
     public function getImageWidth() {
       return $this->picture->size['width'];
     }
 //------------------------------------------------------------------------------
-    //redy
+    //int getImageDelay ( void )
     public function getImageDelay() {
       return $this->picture->delay;
     }
 //FIXME pozor musi se zadavat k jednotlivim obrazkum!!!! pri retezovem zpracovani!
-    //redy
+//neaplikovano! zaimplementovat!!
+    //bool setImageDelay ( int $delay )
     public function setImageDelay($delay) {
       $this->picture->delay = $delay;
       return $this;
     }
 //------------------------------------------------------------------------------
-    //redy
+    //int getCompression ( void )
     public function getCompression() {
       return $this->picture->compress;
     }
 
-    //redy
+    //bool setCompression ( int $compression )
     public function setCompression($compression) {
       $this->picture->compress = $compression;
       return $this;
     }
 //------------------------------------------------------------------------------
-    //redy
+    //Imagick getImage ( void )
+    public function getImage() {
+      return file_get_contents($this->picture->_stream);
+    }
+
+    //bool setImage ( Imagick $replace )
+    public function setImage(Imagic $replace) {
+      if ($replace instanceof Imagic) {
+        $filename = $replace->getDataImagic();
+        $this->getIdentify($filename); //nacteni identifikace
+      }
+      return $this;
+    }
+//------------------------------------------------------------------------------
+    //string getFont ( void )
+    public function getFont() {
+      return $this->picture->font;
+    }
+
+    //bool setFont ( string $font )
+    public function setFont($font) {
+      //FIXME rozlisovat nejak souborov a textovy font????
+      $this->picture->font = $font;
+      return $this;
+    }
+//------------------------------------------------------------------------------
+    //bool readImage ( string $filename )
     public function readImage($filename) {
       if (file_exists($filename)) {
         $this->getIdentify($filename); //nacteni identifikace
@@ -542,7 +619,7 @@
       return $this;
     }
 
-    //redy
+    //bool writeImage ([ string $filename ] )
     public function writeImage($filename = NULL) {
 
       $this->executeCmd();  //nachroustani prikazu
@@ -578,7 +655,8 @@
           $filename = $this->picture->path;
 
           copy($this->picture->_stream, $filename);
-
+          //exec(sprintf('convert \'%s\' \'%s\'', $this->picture->_stream, $filename));
+//FIXME udelat spravny konvert na format!!!!?!
           $this->getIdentify($filename); //nacteni identifikace
 
         } else {
@@ -600,6 +678,13 @@
       return $result;
     }
 //------------------------------------------------------------------------------
+    const _C_ARRAY = 'array';
+    const _C_BOOLEAN = 'boolean';
+    const _C_IMAGIC = 'Imagic';
+    const _C_IMAGICDRAW = 'ImagicDraw';
+    const _C_NUMERIC = 'numeric';
+    const _C_STRING = 'string';
+
     //pretezovana metoda pro efekty
     public function __call($name, $values) {
       try {
@@ -614,11 +699,12 @@
         $format = NULL;
         $version = NULL;
         $cmdtype = self::_CMDTYPE_NORMAL;
+
         switch ($name) {
 
           //bool adaptiveBlurImage ( float $radius , float $sigma [, int $channel = Imagick::CHANNEL_DEFAULT ] )
           case 'adaptiveBlurImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '629';
             switch (count($values)) {
               case 2: $format = '-adaptive-blur %sx%s'; break;
@@ -628,7 +714,7 @@
 
           //bool adaptiveResizeImage ( int $columns , int $rows [, bool $bestfit = false ] )
           case 'adaptiveResizeImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '629';
             $columns = self::isFill($values, 0);
             $rows =  self::isFill($values, 1);
@@ -639,7 +725,7 @@
 
           //bool adaptiveSharpenImage ( float $radius , float $sigma [, int $channel = Imagick::CHANNEL_DEFAULT ] )
           case 'adaptiveSharpenImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '629';
             switch (count($values)) {
               case 2: $format = '-adaptive-sharpen %sx%s'; break;
@@ -649,19 +735,15 @@
 
           //bool adaptiveThresholdImage ( int $width , int $height , int $offset )
           case 'adaptiveThresholdImage':
-            $check = array('numeric', 'numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $values[2] = self::getSignValue($values[2]);
             $format = '-lat %sx%s%s';
           break;
 
-          //addImage
-          //addNoiseImage
-          //affineTransformImage
-
           //bool annotateImage ( ImagickDraw $draw_settings , float $x , float $y , float $angle , string $text )
           case 'annotateImage':
-            $check = array('ImagicDraw', 'numeric', 'numeric', 'numeric', 'string');
+            $check = array(self::_C_IMAGICDRAW, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_STRING);
             $version = '600';
             $draw = $values[0]->getDataImagicDraw();
             $x = $values[1];
@@ -674,7 +756,7 @@
 
           //bool blurImage ( float $radius , float $sigma [, int $channel ] )
           case 'blurImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             switch (count($values)) {
               case 2: $format = '-blur %sx%s'; break;
@@ -684,28 +766,28 @@
 
           //bool borderImage ( mixed $bordercolor , int $width , int $height )
           case 'borderImage':
-            $check = array('string', 'numeric', 'numeric');
+            $check = array(self::_C_STRING, self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $format = '-bordercolor \'%s\' -border %sx%s';
           break;
 
           //bool charcoalImage ( float $radius , float $sigma )
           case 'charcoalImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $format = '-charcoal %sx%s';
           break;
 
           //bool chopImage ( int $width , int $height , int $x , int $y )
           case 'chopImage':
-            $check = array('numeric', 'numeric', 'numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $format = '-chop %sx%s+%s+%s';
           break;
 
           //bool colorizeImage ( mixed $colorize , mixed $opacity )
           case 'colorizeImage':
-            $check = array('string');
+            $check = array(self::_C_STRING);
             $version = '600';
             $colorize = $values[0]; //pouze ve tvaru #RRGGBB!!!!
             //$opacity = $values[1];
@@ -720,29 +802,21 @@
 
           //bool compositeImage ( Imagick $composite_object , int $composite , int $x , int $y [, int $channel = Imagick::CHANNEL_ALL ] )
           case 'compositeImage':
-            $check = array('Imagic', 'string', 'numeric', 'numeric');
+            $check = array(self::_C_IMAGIC, self::_C_STRING, self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $cmdtype = self::_CMDTYPE_SPECIAL;
             $composite_object = $values[0]->getDataImagic();
             $composite = $values[1];
             $x = $values[2];
             $y = $values[3];
-            //convert -compose over -geometry +10+10 -composite out1.jpg pokus2.png out0.jpg
-            //z -> vlozit -> do
-            switch (count($values)) {
-              case 4:
-                $values = array($composite, $x, $y, $this->picture->_stream, $composite_object, $this->picture->_stream);
-                $format = '-compose %s -geometry +%s+%s -composite \'%s\' \'%s\' \'%s\''; break;
-              case 5:
-                $values = array($composite, $x, $y, $values[4], $this->picture->_stream, $composite_object, $this->picture->_stream);
-                $format = '-compose %s -geometry +%s+%s -channel %s -composite \'%s\' \'%s\' \'%s\'';
-              break;
-            }
+            $channel = self::isFill($values, 4, self::CHANNEL_ALL);
+            $values = array($composite, $x, $y, $channel, $this->picture->_stream, $composite_object, $this->picture->_stream);
+            $format = '-compose %s -geometry +%s+%s -channel %s -composite \'%s\' \'%s\' \'%s\'';
           break;
 
           //bool contrastImage ( bool $sharpen )
           case 'contrastImage':
-            $check = array('boolean');
+            $check = array(self::_C_BOOLEAN);
             $version = '600';
             $values[0] = self::getSign(!$values[0]);
             $format = '%scontrast';
@@ -750,26 +824,24 @@
 
           //bool contrastStretchImage ( float $black_point , float $white_point [, int $channel = Imagick::CHANNEL_ALL ] )
           case 'contrastStretchImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '629';
-            switch (count($values)) {
-              case 2: $format = '-contrast-stretch %sx%s%%'; break;
-              case 3: $format = '-contrast-stretch %sx%s%% -channel %s'; break;
-            }
+            $values[2] = self::isFill($values, 2, self::CHANNEL_ALL);
+            $format = '-contrast-stretch %sx%s%% -channel %s';
           break;
 
           //convolveImage
 
           //bool cropImage ( int $width , int $height , int $x , int $y )
           case 'cropImage':
-            $check = array('numeric', 'numeric', 'numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $format = '-crop %sx%s+%s+%s';
           break;
 
           //bool cropThumbnailImage ( int $width , int $height )
           case 'cropThumbnailImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $width = $values[0];
             $height = $values[1];
@@ -779,14 +851,14 @@
 
           //bool cycleColormapImage ( int $displace )
           case 'cycleColormapImage':
-            $check = array('numeric');
+            $check = array(self::_C_NUMERIC);
             $version = '600';
             $format = '-cycle %s';
           break;
 
           //bool deskewImage ( float $threshold )
           case 'deskewImage':
-            $check = array('numeric');
+            $check = array(self::_C_NUMERIC);
             $version = '645';
             $format = '-deskew %s';
           break;
@@ -800,31 +872,25 @@
 
           //bool distortImage ( int $method , array $arguments , bool $bestfit )
           case 'distortImage':
-            $check = array('string', 'array', 'boolean');
+            $check = array(self::_C_STRING, self::_C_ARRAY, self::_C_BOOLEAN);
             $version = '636';
             $method = $values[0];
             $arguments = $values[1];
             $bestfit = self::getSign($values[2]);
-            $poc = 0;
             $row = NULL;
-            //TODO optimalizovat!
-            //4 hodnoty na radek! => X,X  X,X    X,X  X,X ...
-            foreach ($arguments as $val) {
-              if (($poc % 2) == 0) {
-                $row .= $val.',';
-              } else {
-                $row .= $val.' ';
-              }
-              $poc++;
+            $chunk = array_chunk($arguments, 2);  //X,X  X,X  X,X  X,X ...
+            $point = array();
+            foreach ($chunk as $pars) {
+              $point[] = implode(',', $pars);
             }
-
+            $row = implode(' ', $point);
             $values = array($bestfit, $method, $row);
             $format = '%sdistort %s \'%s\'';
           break;
 
           //bool drawImage ( ImagickDraw $draw )
           case 'drawImage':
-            $check = array('ImagicDraw');
+            $check = array(self::_C_IMAGICDRAW);
             $version = '600';
             $values[0] = $values[0]->getDataImagicDraw();
             $format = '%s';
@@ -832,21 +898,21 @@
 
           //bool edgeImage ( float $radius )
           case 'edgeImage':
-            $check = array('numeric');
+            $check = array(self::_C_NUMERIC);
             $version = '600';
             $format = '-edge %s';
           break;
 
           //bool embossImage ( float $radius , float $sigma )
           case 'embossImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $format = '-emboss %sx%s';
           break;
 
           //bool encipherImage ( string $passphrase )
           case 'encipherImage':
-            $check = array('string');
+            $check = array(self::_C_STRING);
             $version = '639';
             $format = '-encipher \'%s\'';
           break;
@@ -867,17 +933,15 @@
 
           //bool evaluateImage ( int $op , float $constant [, int $channel = Imagick::CHANNEL_ALL ] )
           case 'evaluateImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
-            switch (count($values)) {
-              case 2: $format = '-evaluate %s %s'; break;
-              case 3: $format = '-evaluate %s %s -channel %s'; break;
-            }
+            $values[2] = self::isFill($values, 2, self::CHANNEL_ALL);
+            $format = '-evaluate %s %s -channel %s';
           break;
 
           //bool extentImage ( int $width , int $height , int $x , int $y )
           case 'extentImage':
-            $check = array('numeric', 'numeric', 'numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '631';
             $format = '-extent %sx%s+%s+%s';
           break;
@@ -898,14 +962,14 @@
 
           //bool frameImage ( mixed $matte_color , int $width , int $height , int $inner_bevel , int $outer_bevel )
           case 'frameImage':
-            $check = array('string', 'numeric', 'numeric', 'numeric', 'numeric');
+            $check = array(self::_C_STRING, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $format = '-mattecolor \'%s\' -frame %sx%s+%s+%s';
           break;
 
           //bool functionImage ( int $function , array $arguments [, int $channel = Imagick::CHANNEL_DEFAULT ] )
           case 'functionImage':
-            $check = array('string', 'array');
+            $check = array(self::_C_STRING, self::_C_ARRAY);
             $version = '649';
             $values[1] = implode(',', $values[1]);
             switch (count($values)) {
@@ -916,47 +980,113 @@
 
           //bool fxImage ( string $expression [, int $channel = Imagick::CHANNEL_ALL ] )
           case 'fxImage':
-            $check = array('string');
+            $check = array(self::_C_STRING);
             $version = '600';
-            switch (count($values)) {
-              case 1: $format = '-fx \'%s\''; break;
-              case 2: $format = '-fx \'%s\' -channel %s'; break;
-            }
+            $values[1] = self::isFill($values, 1, self::CHANNEL_ALL);
+            $format = '-fx \'%s\' -channel %s';
           break;
 
           //bool gammaImage ( float $gamma [, int $channel = Imagick::CHANNEL_ALL ] )
           case 'gammaImage':
-            $check = array('numeric');
+            $check = array(self::_C_NUMERIC);
             $version = '600';
-            switch (count($values)) {
-              case 1: $format = '-gamma %s'; break;
-              case 2: $format = '-gamma %s -channel %s'; break;
-            }
+            $values[1] = self::isFill($values, 1, self::CHANNEL_ALL);
+            $format = '-gamma %s -channel %s';
           break;
 
           //bool gaussianBlurImage ( float $radius , float $sigma [, int $channel = Imagick::CHANNEL_ALL ] )
           case 'gaussianBlurImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $values[2] = self::isFill($values, 2, self::CHANNEL_ALL);
+            $format = '-gaussian-blur %sx%s -channel %s';
+          break;
+
+          //bool haldClutImage ( Imagick $clut [, int $channel = Imagick::CHANNEL_DEFAULT ] )
+          case '':
+            //TODO nastudovat a dodealt?!
+          break;
+
+          //bool implodeImage ( float $radius )
+          case 'implodeImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $format = '-implode %s';
+          break;
+
+          //bool levelImage ( float $blackPoint , float $gamma , float $whitePoint [, int $channel = Imagick::CHANNEL_ALL ] )
+          case 'levelImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $blackPoint = $values[0];
+            $gamma = $values[1];
+            $whitePoint = $values[2];
+            $channel = self::isFill($values, 3, self::CHANNEL_ALL);
+            $values = array($blackPoint, $whitePoint, $gamma, $channel);
+            $format = '-level %s,%s,%s -channel %s';
+          break;
+
+          //bool linearStretchImage ( float $blackPoint , float $whitePoint )
+          case 'linearStretchImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-linear-stretch %sx%s';
+          break;
+
+          //bool magnifyImage ( void )
+          case 'magnifyImage':
+            $check = array();
+            $version = '600';
+            $format = '-resize 200%%';
+          break;
+
+          //bool medianFilterImage ( float $radius )
+          case 'medianFilterImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $format = '-median %s';
+          break;
+
+          //bool minifyImage ( void )
+          case 'minifyImage':
+            $check = array();
+            $version = '600';
+            $format = '-resize 50%%';
+          break;
+
+          //bool modulateImage ( float $brightness , float $saturation , float $hue )
+          case 'modulateImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-modulate %s,%s,%s';
+          break;
+
+          //bool motionBlurImage ( float $radius , float $sigma , float $angle [, int $channel = Imagick::CHANNEL_DEFAULT ] )
+          case 'motionBlurImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             switch (count($values)) {
-              case 2: $format = '-gaussian-blur %sx%s'; break;
-              case 3: $format = '-gaussian-blur %sx%s -channel %s'; break;
+              case 3: $format = '-motion-blur %sx%s+%s'; break;
+              case 4: $format = '-motion-blur %sx%s+%s -channel %s'; break;
             }
           break;
 
-          case '':
-          break;
-
-          case '':
+          //bool negateImage ( bool $gray [, int $channel = Imagick::CHANNEL_ALL ] )
+          case 'negateImage':
+            $check = array(self::_C_BOOLEAN);
+            $version = '600';
+            $values[0] = self::getSign($values[0]);
+            $values[1] = self::isFill($values, 1, self::CHANNEL_ALL);
+            $format = '%snegate -channel %s';
           break;
 
           //bool newImage ( int $cols , int $rows , mixed $background [, string $format ] )
           case 'newImage':
-            $check = array('numeric', 'numeric', 'string');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_STRING);
             $version = '600';
             $cmdtype = self::_CMDTYPE_SPECIAL;
-            $format = self::isFill($values, 3, 'png');
-            $newstream = sprintf('%s.%s', $this->picture->_stream, $format);  //vyrvoreni noveho jmena
+            $this->picture->format = self::isFill($values, 3, 'png');
+            $newstream = sprintf('%s.%s', $this->picture->_stream, $this->picture->format);  //vyrvoreni noveho jmena
             unlink($this->picture->_stream);  //smazani stareho streamu
             $this->picture->_stream = $newstream; //prepis novym jmenem
             $values[3] = $newstream;
@@ -965,12 +1095,126 @@
             $format = '-size %sx%s xc:\'%s\' \'%s\''; //\'{$this->obrazek->stream}.{$format}\'
           break;
 
-          case '':
+          //bool newPseudoImage ( int $columns , int $rows , string $pseudoString )
+          case 'newPseudoImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_STRING);
+            $version = '600';
+            $cmdtype = self::_CMDTYPE_SPECIAL;
+            $this->picture->format = ($this->picture->format ?: 'png'); //nastaveni defaultniho formatu
+            $newstream = sprintf('%s.%s', $this->picture->_stream, $this->picture->format);  //vyrvoreni noveho jmena
+            unlink($this->picture->_stream);  //smazani stareho streamu
+            $this->picture->_stream = $newstream; //prepis novym jmenem
+            $values[3] = $newstream;
+            $format = '-size %sx%s \'%s\' \'%s\'';
+          break;
+
+          //bool normalizeImage ([ int $channel = Imagick::CHANNEL_ALL ] )
+          case 'normalizeImage':
+            $check = array();
+            $version = '600';
+            $values[0] = self::isFill($values, 0, self::CHANNEL_ALL);
+            $format = '-normalize -channel %s';
+          break;
+
+          //bool oilPaintImage ( float $radius )
+          case 'oilPaintImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $format = '-paint %s';
+          break;
+
+          //bool paintOpaqueImage ( mixed $target , mixed $fill , float $fuzz [, int $channel = Imagick::CHANNEL_ALL ] )
+          case 'paintOpaqueImage':
+            $check = array(self::_C_STRING, self::_C_STRING, self::_C_NUMERIC);
+            $version = '600';
+            $target = $values[0];
+            $fill = $values[1];
+            $fuzz = $values[2];
+            $channel = self::isFill($values, 3, self::CHANNEL_ALL);
+            $values = array($fuzz, $fill, $target, $channel);
+            $format = '-fuzz %s -fill \'%s\' -opaque \'%s\' -channel %s';
+          break;
+
+          //bool paintTransparentImage ( mixed $target , float $alpha , float $fuzz )
+          case 'paintTransparentImage':
+            $check = array(self::_C_STRING, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $target = $values[0];
+            $alpha = $values[1];
+            $fuzz = $values[2];
+            $values = array($fuzz, $alpha, $target);
+            $format = '-fuzz %s -channel rgba -fill "rgba(0,0,0,%s)" -opaque \'%s\'';  // -transparent white
+          break;
+
+          //bool polaroidImage ( ImagickDraw $properties , float $angle )
+          case 'polaroidImage':
+            $check = array(self::_C_IMAGICDRAW, self::_C_NUMERIC);
+            $version = '632';
+            $values[0] = $values[0]->getDataImagicDraw();
+            $format = '%s -polaroid %s';
+          break;
+
+          //bool posterizeImage ( int $levels , bool $dither )
+          case 'posterizeImage':
+            $check = array(self::_C_NUMERIC, self::_C_BOOLEAN);
+            $version = '600';
+            $values[1] = self::getSign(!$values[1]);
+            $format = '-posterize %s %sdither Riemersma';
+          break;
+
+          //bool previewImages ( int $preview )
+          case 'previewImages': //?!!
+            $check = array(self::_C_STRING);
+            $version = '600'; //TODO poresit lip!!!!
+            $format = '-preview %s';
+          break;
+
+          //bool radialBlurImage ( float $angle [, int $channel = Imagick::CHANNEL_ALL ] )
+          case 'radialBlurImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $values[1] = self::isFill($values, 1, self::CHANNEL_ALL);
+            $format = '-radial-blur %s -channel %s';
+          break;
+
+          //bool raiseImage ( int $width , int $height , int $x , int $y , bool $raise )
+          case 'raiseImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_BOOLEAN);
+            $version = '600';
+            $width = $values[0];
+            $height = $values[1];
+            $x = $values[2];
+            $y = $values[3];
+            $raise = self::getSign(!$values[4]);
+            $values = array($raise, $width, $height, $x, $y);
+            $format = '%sraise %sx%s+%s+%s';
+          break;
+
+          //bool randomThresholdImage ( float $low , float $high [, int $channel = Imagick::CHANNEL_ALL ] )
+          case 'randomThresholdImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '629';
+            $values[2] = self::isFill($values, 2, self::CHANNEL_ALL);
+            $format = '-random-threshold %sx%s -channel %s';
+          break;
+
+          //bool reduceNoiseImage ( float $radius )
+          case 'reduceNoiseImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $format = '-noise %s';
+          break;
+
+          //bool resampleImage ( float $x_resolution , float $y_resolution , int $filter , float $blur )
+          case 'resampleImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_STRING, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-resample %sx%s -filter %s'; // -blur %s
           break;
 
           //bool resizeImage ( int $columns , int $rows , int $filter , float $blur [, bool $bestfit = false ] )
           case 'resizeImage':
-            $check = array('numeric', 'numeric', 'string', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_STRING, self::_C_NUMERIC);
             $version = '600';
             $columns = self::isFill($values, 0);
             $rows =  self::isFill($values, 1);
@@ -979,14 +1223,80 @@
             $format = '-resize %sx%s%s -filter %s -define filter:blur=%s';  //-blur %s.0%%
           break;
 
-          case '':
+          //bool rollImage ( int $x , int $y )
+          case 'rollImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-roll +%s+%s';
           break;
 
           //bool rotateImage ( mixed $background , float $degrees )
           case 'rotateImage':
-            $check = array('string', 'numeric');
+            $check = array(self::_C_STRING, self::_C_NUMERIC);
             $version = '600';
             $format = '-background \'%s\' -rotate %s';
+          break;
+
+          //bool roundCorners ( float $x_rounding , float $y_rounding [, float $stroke_width = 10 [, float $displace = 5 [, float $size_correction = -6 ]]] )
+          case 'roundCorners':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600'; //629, jelikoz je to psane rucne tak je to zbytecny
+            $cmdtype = self::_CMDTYPE_SPECIAL;
+            $x_rounding = $values[0];
+            $y_rounding = $values[1];
+            $stroke_width = self::isNull($values, 2, 10); //10
+            $displace = self::isNull($values, 3, 5); //5
+            $size_correction = self::isNull($values, 4, -6);  //-6
+            $w = $this->picture->size['width']; //nezjistuje jestli se hybalo s obrazkama!
+            $h = $this->picture->size['height'];
+            switch (count($values)) {
+              case 2:
+                $values = array($this->picture->_stream, $w, $h, 0, 0, 0, $w, $h, $x_rounding, $y_rounding, $this->picture->_stream);
+              break;
+//TODO dodelat!!!!
+              case 3:
+              break;
+
+              case 4:
+                $values = array($this->picture->_stream, $w, $h, $stroke_width, $displace, $displace, $w - $displace - 1, $h - $displace - 1, $x_rounding, $y_rounding, $this->picture->_stream);
+              break;
+            }
+            $format = '\'%s\' -mattecolor black \( -size %sx%s xc:none -stroke black -strokewidth %s -draw \'roundRectangle %s,%s %s,%s %s,%s\' \)  -compose DstIn -composite \'%s\'';
+          break;
+
+          //bool sampleImage ( int $columns , int $rows )
+          case 'sampleImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-sample %sx%s!';
+          break;
+
+          //bool scaleImage ( int $cols , int $rows [, bool $bestfit = false ] )
+          case 'scaleImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $cols = self::isFill($values, 0);
+            $rows = self::isFill($values, 1);
+            $bestfit = self::getBestfitValue($values, 2, $cols, $rows);
+            $values = array($cols, $rows, $bestfit);
+            $format = '-scale %sx%s%s';
+          break;
+
+          //bool separateImageChannel ( int $channel )
+          case 'separateImageChannel':
+            $check = array(self::_C_STRING);
+            $version = '600';
+            $format = '-separate -channel %s';
+          break;
+
+          //bool sepiaToneImage ( float $threshold )
+          case 'sepiaToneImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $format = '-sepia-tone %s%%';
+          break;
+
+          case '':
           break;
 
           case '':
@@ -994,24 +1304,118 @@
 
           //bool setImageBackgroundColor ( mixed $background )
           case 'setImageBackgroundColor':
-            $check = array('string');
+            $check = array(self::_C_STRING);
             $version = '600';
             $format = '-background \'%s\'';
           break;
 
           //bool setImageVirtualPixelMethod ( int $method )
           case 'setImageVirtualPixelMethod':
-            $check = array('string');
+            $check = array(self::_C_STRING);
             $version = '600';
             $format = '-virtual-pixel %s';
           break;
 
-          case '':
+          //bool shadeImage ( bool $gray , float $azimuth , float $elevation )
+          case 'shadeImage':
+            $check = array(self::_C_BOOLEAN, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '629';
+            $values[0] = self::getSign(!$values[0]);
+            $format = '%sshade %sx%s';
+          break;
+
+          //bool shadowImage ( float $opacity , float $sigma , int $x , int $y )
+          case 'shadowImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-shadow %sx%s+%s+%s';
+          break;
+
+          //bool sharpenImage ( float $radius , float $sigma [, int $channel = Imagick::CHANNEL_ALL ] )
+          case 'sharpenImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $values[2] = self::isFill($values, 2, self::CHANNEL_ALL);
+            $format = '-sharpen %sx%s -channel %s';
+          break;
+
+          //bool shaveImage ( int $columns , int $rows )
+          case 'shaveImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-shave %sx%s';
+          break;
+
+          //bool shearImage ( mixed $background , float $x_shear , float $y_shear )
+          case 'shearImage':
+            $check = array(self::_C_STRING, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-background \'%s\' -shear %sx%s';
+          break;
+
+          //bool sigmoidalContrastImage ( bool $sharpen , float $alpha , float $beta [, int $channel = Imagick::CHANNEL_ALL ] )
+          case 'sigmoidalContrastImage':
+            $check = array(self::_C_BOOLEAN, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $values[0] = self::getSign(!$values[0]);
+            $values[3] = self::isFill($values, 3, self::CHANNEL_ALL);
+            $format = '%ssigmoidal-contrast %sx%s -channel %s';
+          break;
+
+          //bool sketchImage ( float $radius , float $sigma , float $angle )
+          case 'sketchImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '629';
+            $format = '-sketch %sx%s+%s';
+          break;
+
+          //bool solarizeImage ( int $threshold )
+          case 'solarizeImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $format = '-solarize %s';
+          break;
+
+          //bool sparseColorImage ( int $SPARSE_METHOD , array $arguments [, int $channel = Imagick::CHANNEL_DEFAULT ] )
+          case 'sparseColorImage':
+            $check = array(self::_C_STRING, self::_C_ARRAY);
+            $version = '645';
+            //$values[3] = self::isFill($values, 3, self::CHANNEL_ALL);
+            //TODO dodelat! -sparse-color method 'x,y color ...'
+          break;
+
+          //bool spliceImage ( int $width , int $height , int $x , int $y )
+          case 'spliceImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-splice %sx%s+%s+%s';
+          break;
+
+          //bool spreadImage ( float $radius )
+          case 'spreadImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $format = '-spread %s';
+          break;
+
+          //bool swirlImage ( float $degrees )
+          case 'swirlImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $format = '-swirl %s';
+          break;
+
+          //bool thresholdImage ( float $threshold [, int $channel = Imagick::CHANNEL_ALL ] )
+          case 'thresholdImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '600';
+            $values[1] = self::isFill($values, 1, self::CHANNEL_ALL);
+            $format = '-threshold %s -channel %s';
           break;
 
           //bool thumbnailImage ( int $columns , int $rows [, bool $bestfit = false [, bool $fill = false ]] )
           case 'thumbnailImage':
-            $check = array('numeric', 'numeric');
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
             $columns = self::isFill($values, 0);
             $rows =  self::isFill($values, 1);
@@ -1020,9 +1424,74 @@
             $format = '-thumbnail %sx%s%s';
           break;
 
-          case '':
+          //bool tintImage ( mixed $tint , mixed $opacity )
+          case 'tintImage':
+            $check = array(self::_C_STRING, self::_C_NUMERIC);
+            $version = '600';
+            $format = '-fill \'%s\' -tint %s%%';
           break;
 
+          //bool transposeImage ( void )
+          case 'transposeImage':
+            $check = array();
+            $version = '629'; //ekv: -flip -rotate 90
+            $format = '-transpose';
+          break;
+
+          //bool transverseImage ( void )
+          case 'transverseImage':
+            $check = array();
+            $version = '629'; //ekv: -flop -rotate 90
+            $format = '-transverse';
+          break;
+
+          //bool trimImage ( float $fuzz )
+          case 'trimImage':
+            $check = array(self::_C_NUMERIC);
+            $version = '629';
+            $format = '-trim -fuzz %s%%';
+          break;
+
+          //bool uniqueImageColors ( void )
+          case 'uniqueImageColors':
+            $check = array();
+            $version = '629';
+            $format = '-unique-colors';
+          break;
+
+          //bool unsharpMaskImage ( float $radius , float $sigma , float $amount , float $threshold [, int $channel = Imagick::CHANNEL_ALL ] )
+          case 'unsharpMaskImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '600';
+            $values[4] = self::isFill($values, 4, self::CHANNEL_ALL);
+            $format = '-unsharp %sx%s+%s+%s -channel %s';
+          break;
+
+          //bool vignetteImage ( float $blackPoint , float $whitePoint , int $x , int $y )
+          case 'vignetteImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '629';
+            $format = '-vignette %sx%s+%s+%s';
+          break;
+
+          //bool waveImage ( float $amplitude , float $length )
+          case 'waveImage':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '629';
+            $format = '-wave %sx%s';
+          break;
+
+          case '':
+          break;
+/*
+    public function transparent($color) {
+      return $this->execConvert("-transparent '{$color}'");
+    }
+
+    public function transparentColor($color) {
+      return $this->execConvert("-transparent-color '{$color}'");
+    }
+*/
           default:
             echo sprintf('zadaná metoda <strong>%s</strong> není k dispozici!', $name);
             exit(1);
@@ -1033,37 +1502,37 @@
         foreach ($check as $index => $type) {
           $value = $parameters[$index];
           switch ($type) {
-            case 'numeric': //kontrola na cisla
+            case self::_C_NUMERIC: //kontrola na cisla
               if (!is_numeric($value)) {
                 throw new ExceptionImagic($value, 100);
               }
             break;
 
-            case 'string':  //kontrola textu
+            case self::_C_STRING:  //kontrola textu
               if (!is_string($value)) {
                 throw new ExceptionImagic($value, 101);
               }
             break;
 
-            case 'boolean': //kontrola boolean
+            case self::_C_BOOLEAN: //kontrola boolean
               if (!is_bool($value)) {
                 throw new ExceptionImagic($value, 102);
               }
             break;
 
-            case 'array': //kontrola array
+            case self::_C_ARRAY: //kontrola array
               if (!is_array($value)) {
                 throw new ExceptionImagic($value, 103);
               }
             break;
 
-            case 'Imagic':  //kontrola instance Imagic
+            case self::_C_IMAGIC:  //kontrola instance Imagic
               if (!($value instanceof Imagic)) {
                 throw new ExceptionImagic(NULL, 104);
               }
             break;
 
-            case 'ImagicDraw':  //kontrola instance ImagicDraw
+            case self::_C_IMAGICDRAW:  //kontrola instance ImagicDraw
               if (!($value instanceof ImagicDraw)) {
                 throw new ExceptionImagic(NULL, 105);
               }
@@ -1111,19 +1580,19 @@
         }
       }
 //var_dump($task['cmd']); //TODO taky zapinat debugem!!!!
-/*
-Imagick clone ( void )
-public array exportImagePixels ( int $x , int $y , int $width , int $height , string $map , int $STORAGE )
-Imagick flattenImages ( void )
-*/
+
       return $this;
     }
-
-//TODO tyto funkce dodelat!!!!
-    public function getErrors() { //navraceni vygenerovanych chyb!!!
+//------------------------------------------------------------------------------
+//TODO tyto funkce nutne!!!!! dodelat!!!!
+    public function getErrors() { //navrat generovanych chyb!!!
+    }
+//TODO i funkci getDebug()?
+    public function enableDebug() {
     }
 
-    public function enableDebug() {
+    public function getCmd() {
+      return $this->picture->_debug['cmd'];
     }
 //------------------------------------------------------------------------------
     protected function executeCmd() {
@@ -1162,13 +1631,12 @@ Imagick flattenImages ( void )
             switch ($cmdtype) {
               case self::_CMDTYPE_NORMAL:
                 $meziarray[] = $cmd;
-//var_dump($cmdtype, $cmdnexttype, $count, $index + 1);
                 //slouci pri zmene a nebo pri poslednim
                 if ($cmdnexttype != $cmdtype ||
                     $count == ($index + 1)) {
                   $meziarray[] =  sprintf('\'%s\' \'%s\'', $stream, $stream);
                   $cmdarray[] = implode('    ', $meziarray);
-                  $meziarray = array('convert');
+                  $meziarray = array('convert');  //znovu nastaveni pole
                 }
               break;
 
@@ -1184,6 +1652,7 @@ Imagick flattenImages ( void )
         }
 
 //var_dump($cmdarray);
+        $this->picture->_debug['cmd'] = $cmdarray;
 
         $allcmd = implode("\n", $cmdarray);
         exec($allcmd, $stdout); //vykonani vsech prikazu zaraz
@@ -1221,9 +1690,16 @@ Imagick flattenImages ( void )
       return ($value ? '+' : '-');
     }
 
+    protected static function isNull($array, $key, $default = '') {
+      //return (!is_null($array[$key]) ? $array[$key] : $default);
+      return (array_key_exists($key, $array) ? $array[$key] : $default);
+    }
+
     //redy
-    protected static function isFill($array, $key, $default = "") {
+    protected static function isFill($array, $key, $default = '') {
       return (!empty($array[$key]) ? $array[$key] : $default);
+      //return (!is_null($array[$key]) ? $array[$key] : $default);
+      //return (array_key_exists($key, $array) ? $array[$key] : $default);
     }
 
     //redy
@@ -1232,7 +1708,8 @@ Imagick flattenImages ( void )
       $hex = array_slice(str_split($hex), 1); //orezani #
 
       if (count($hex) == 6) { //slouceni po dvojcich a prevedeni cisla na dec
-        foreach (array_chunk($hex, 2) as $kod) {
+        $chunk = array_chunk($hex, 2);
+        foreach ($chunk as $kod) {
           $result[] = hexdec(implode('', $kod));
         }
       }
@@ -1257,57 +1734,10 @@ Imagick flattenImages ( void )
       return $this->picture->state;
     }
 //------------------------------------------------------------------------------
-    //redy
-    public function getImage() {
-      return file_get_contents($this->picture->_stream);
-    }
-
-    //redy
-    public function setImage(Imagic $replace) {
-      if ($replace instanceof Imagic) {
-        $filename = $replace->getDataImagic();
-        $this->getIdentify($filename); //nacteni identifikace
-      }
-      return $this;
-    }
-//------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//TODO aplikace formatu u ukladani obrazku!
 /*
+//TODO vytridit!!!!!!
     //public function getFormat($format) {
       return $this->obrazek->format;
     }
@@ -1316,23 +1746,16 @@ Imagick flattenImages ( void )
       $this->obrazek->format = $format;
       return $this;
     }
-*/
 
-  /*
    * Imagick::displayImage
    * Imagick::readImageFile($filehandle)
    *
-   **/
 
-
-  /*
   //TODO append!?! nebo jen pro gify?
     public function addImage($source)
     {
       //$source
     }
-  */
-  //system("composite -compose {$composite} -geometry +{$x}+{$y} '{$composite_object}' '{$this->obrazek->stream}' '{$this->obrazek->stream}'", $result);
 
     public function clear() {
       //vymazani obsahu streamu, ale ne tempu!
@@ -1347,8 +1770,6 @@ Imagick flattenImages ( void )
 //TODO melo by fungovat
       return $result;
     }
-
-
 
     public function getImageDepth() {
       $a = getimagesize($this->obrazek->stream);
@@ -1372,88 +1793,6 @@ Imagick flattenImages ( void )
       header("content-type: {$a["mime"]}");
     }
 
-    public function implodeImage($radius) {
-      return $this->execConvert("-implode {$radius}");
-    }
-
-    public function levelImage($blackPoint, $gamma, $whitePoint) {
-      return $this->execConvert("-level {$blackPoint},{$whitePoint}%,{$gamma}");
-    }
-
-    public function linearStretchImage($blackPoint, $whitePoint) {
-      return $this->execConvert("-linear-stretch {$blackPoint}x{$whitePoint}%");
-    }
-
-    public function medianFilterImage($radius) {
-      return $this->execConvert("-median {$radius}");
-    }
-
-    public function modulateImage($brightness, $saturation, $hue) {
-      return $this->execConvert("-modulate {$brightness},{$saturation},{$hue}");
-    }
-
-    public function motionBlurImage($radius, $sigma, $angle) {
-      return $this->execConvert("-motion-blur {$radius}x{$sigma}+{$angle}");
-    }
-
-    public function negateImage($gray) {
-      $g = ($gray ? "+" : "-");
-      return $this->execConvert("{$g}negate");
-    }
-
-    public function oilPaintImage($radius) {
-      return $this->execConvert("-paint {$radius}");
-    }
-
-    public function polaroidImage($properties, $angle) {
-      $draw = $properties->getDataImagicDraw();
-      return $this->execConvert("-draw '{$draw}' -polaroid {$angle}");
-    }
-
-    public function radialBlurImage($angle) {
-      return $this->execConvert("-radial-blur {$angle}");
-    }
-
-    public function raiseImage($width, $height, $x, $y, $raise) {
-      $r = ($raise ? "+" : "-");
-      return $this->execConvert("{$r}raise {$width}x{$height}+{$x}+{$y}");
-    }
-
-    public function reduceNoiseImage($radius) {
-      return $this->execConvert("-noise {$radius}");
-    }
-
-    public function rollImage($x, $y) {
-      return $this->execConvert("-roll +{$x}+{$y}");
-    }
-
-
-    public function sampleImage($columns, $rows) {
-      return $this->execConvert("-sample {$columns}x{$rows}\!");
-    }
-
-    public function sepiaToneImage($threshold) {
-      return $this->execConvert("-sepia-tone {$threshold}%");
-    }
-
-    public function sigmoidalContrastImage($sharpen, $alpha, $beta) {
-      $sharpen = ($sharpen ? "+" : "-");
-
-      return $this->execConvert("{$sharpen}sigmoidal-contrast {$alpha}x{$beta}");
-    }
-//FIXME pridat volitelny parametr na vypnuty absolutni velikosti $absolutne = true
-    public function scaleImage($columns, $rows) {
-      $absolute = $this->absolutesize($columns, $rows);
-      $columns = (!Empty($columns) ? $columns : "");
-      $rows = (!Empty($rows) ? $rows : "");
-
-      return $this->execConvert("-scale {$columns}x{$rows}{$absolute}");
-    }
-  //R, G, B
-    public function separateImageChannel($channel) {
-      return $this->execConvert("-channel {$channel} -separate");
-    }
-
     public function selfCommandLine($command) {
       return $this->execConvert($command);
     }
@@ -1466,7 +1805,6 @@ Imagick flattenImages ( void )
     public function setBackgroundColor($background) {
       return $this->execConvert("-background '{$background}'");
     }
-
 
   //Undefined, CMYK, Gray, HSB, HSL, HWB, Lab, OHTA, RGB, sRGB, Transparent, XYZ, YCbCr, YCC, YIQ, YPbPr, YUV
     public function setImageColorSpace($colorspace) {
@@ -1500,10 +1838,6 @@ Imagick flattenImages ( void )
       return $this->execConvert("-filter {$filter}");
     }
 
-    public function setFont($font) {
-      return $this->execConvert("-font '{$font}'");
-    }
-
     public function setGravity($gravity) {
       return $this->execConvert("-gravity {$gravity}");
     }
@@ -1515,129 +1849,7 @@ Imagick flattenImages ( void )
     public function setPointSize($point_size) {
       return $this->execConvert("-pointsize {$point_size}");
     }
-
-    public function shadeImage($azimuth, $elevation) {
-      //+/-!
-      return $this->execConvert("-shade {$azimuth}x{$elevation}");
-    }
-
-    //shadowImage
-
-    public function sharpenImage($radius, $sigma) {
-      return $this->execConvert("-sharpen {$radius}x{$sigma}");
-    }
-
-    public function shaveImage($columns, $rows) {
-      return $this->execConvert("-shave {$columns}x{$rows}");
-    }
-
-    public function shearImage($background, $x_shear, $y_shear) {
-      return $this->execConvert("-background '{$background}' -shear {$x_shear}x{$y_shear}");
-    }
-
-    public function sketchImage($radius, $sigma, $angle) {
-      return $this->execConvert("-sketch {$radius}x{$sigma}+{$angle}");
-    }
-
-    public function solarizeImage($threshold) {
-      return $this->execConvert("-solarize {$threshold}");
-    }
-
-    public function spliceImage($width, $height, $x, $y) {
-      return $this->execConvert("-splice {$width}x{$height}+{$x}+{$y}");
-    }
-
-    public function spreadImage($radius) {
-      return $this->execConvert("-spread {$radius}");
-    }
-
-    public function swirlImage($degrees) {
-      return $this->execConvert("-swirl {$degrees}");
-    }
-
-    public function thresholdImage($threshold, $channel = NULL) {
-      $channel = (!Empty($channel) ? "-channel {$channel}" : "");
-
-      return $this->execConvert("-threshold {$threshold}% {$channel}");
-    }
-
-    public function transparent($color) {
-      return $this->execConvert("-transparent '{$color}'");
-    }
-
-    public function transparentColor($color) {
-      return $this->execConvert("-transparent-color '{$color}'");
-    }
-
-    public function tintImage($tint, $opacity) {
-      return $this->execConvert("-fill '{$tint}' -tint {$opacity}%");
-    }
-
-    public function transposeImage() {
-      return $this->execConvert("-transpose");
-    }
-
-    public function transverseImage() {
-      return $this->execConvert("-transverse");
-    }
-
-    public function trimImage($fuzz) {
-      return $this->execConvert("-trim -fuzz {$fuzz}%");
-    }
-
-    public function unsharpMaskImage($radius, $sigma, $amount, $threshold) {
-      return $this->execConvert("-unsharp {$radius}x{$sigma}+{$amount}+{$threshold}");
-    }
-
-    public function vignetteImage($radius, $sigma, $x, $y) {
-      return $this->execConvert("-vignette {$radius}x{$sigma}+{$x}+{$y}%");
-    }
-
-    public function waveImage($amplitude, $length) {
-      return $this->execConvert("-wave {$amplitude}x{$length}");
-    }
-
-  /**
-   *
-   * Spolecna kostra pro konvertovani obrazku
-   *
-   * @param prikaz konzolovy prikaz pro convert
-   * @return navrat z konzoly
-   */
-    protected function execConvert($prikaz) {
-      system("convert {$prikaz} '{$this->obrazek->stream}' '{$this->obrazek->stream}'", $result);
-
-      return $result;
-    }
-
-  /**
-   *
-   * Vraci nazev obrazku
-   *
-   * @return nazev obrazku
-   */
-    public function getFilename() {
-      //return $this->obrazek->name;???????????????
-      //TODO vraci nazev obrazku v sekvenci
-    }
-
-  /**
-   *
-   * Nastavuje novy nazev obrazku
-   *
-   * @param filename novy nazev obrazku
-   * @return
-   */
-    public function setFilename($filename) {
-      $result = false;
-      if (!Empty($filename)) {
-        $this->obrazek->name = $filename;
-        $result = true;
-      }
-
-      return $result;
-    }
-
+*/
 
   }
 
@@ -1645,7 +1857,7 @@ Imagick flattenImages ( void )
 
   /**
    *
-   * Reimplementace ImagickDraw knihovny
+   * Library ImagickDraw
    *
    */
   final class ImagicDraw {
@@ -1656,8 +1868,13 @@ Imagick flattenImages ( void )
     }
 //FIXME dodelat zbyvajici funkce a overit ktere spadaji pod cmd drawu a nebo convertu!!!
 //a nasledne i ten pak predelat taky na fluent interface...! a overovani typu etc...
+//a halvne tu zajistit aby v cmd bylo vsechno s '', totiz draw obaluje s "" !!!!
     public function getDataImagicDraw() {
-      $convert = implode(' ', $this->draw->convert);
+      $convert = NULL;
+      if (!empty($this->draw->convert)) {
+        $convert = implode(' ', $this->draw->convert);
+      }
+
       $cmd = NULL;
       if (!empty($this->draw->cmd)) {
         $cmd = implode("\n", $this->draw->cmd);
@@ -1821,7 +2038,7 @@ Imagick flattenImages ( void )
     }
 
     public function setStrokeWidth($stroke_width) {
-      $this->draw->cmd[] = sprintf('stroke-width %s', $stroke_width);
+      $this->draw->convert[] = sprintf('-strokewidth %s', $stroke_width);
       return $this;
     }
 
@@ -1922,7 +2139,7 @@ ok - int getCompression ( void )
 int getCompressionQuality ( void )
 dep - string getCopyright ( void )
 dep - string getFilename ( void )
-string getFont ( void )
+ok - string getFont ( void )
 dep - string getFormat ( void )
 dep - int getGravity ( void )
 dep - string getHomeURL ( void )
@@ -2009,45 +2226,45 @@ array getSamplingFactors ( void )
 array getSize ( void )
 int getSizeOffset ( void )
 ok - array getVersion ( void )
-public bool haldClutImage ( Imagick $clut [, int $channel = Imagick::CHANNEL_DEFAULT ] )
+bool haldClutImage ( Imagick $clut [, int $channel = Imagick::CHANNEL_DEFAULT ] )
 bool hasNextImage ( void )
 bool hasPreviousImage ( void )
-array identifyImage ([ bool $appendRawOutput = false ] )
-bool implodeImage ( float $radius )
-public bool importImagePixels ( int $x , int $y , int $width , int $height , string $map , int $storage , array $pixels )
+ok - array identifyImage ([ bool $appendRawOutput = false ] )
+ok - bool implodeImage ( float $radius )
+bool importImagePixels ( int $x , int $y , int $width , int $height , string $map , int $storage , array $pixels )
 bool labelImage ( string $label )
 bool levelImage ( float $blackPoint , float $gamma , float $whitePoint [, int $channel = Imagick::CHANNEL_ALL ] )
 bool linearStretchImage ( float $blackPoint , float $whitePoint )
-bool liquidRescaleImage ( int $width , int $height , float $delta_x , float $rigidity )
-bool magnifyImage ( void )
+dep - bool liquidRescaleImage ( int $width , int $height , float $delta_x , float $rigidity )
+ok! - bool magnifyImage ( void )
 bool mapImage ( Imagick $map , bool $dither )
-bool matteFloodfillImage ( float $alpha , float $fuzz , mixed $bordercolor , int $x , int $y )
-bool medianFilterImage ( float $radius )
+dep - bool matteFloodfillImage ( float $alpha , float $fuzz , mixed $bordercolor , int $x , int $y )
+ok - bool medianFilterImage ( float $radius )
 bool mergeImageLayers ( int $layer_method )
-bool minifyImage ( void )
-bool modulateImage ( float $brightness , float $saturation , float $hue )
+ok - bool minifyImage ( void )
+ok - bool modulateImage ( float $brightness , float $saturation , float $hue )
 Imagick montageImage ( ImagickDraw $draw , string $tile_geometry , string $thumbnail_geometry , int $mode , string $frame )
 Imagick morphImages ( int $number_frames )
 Imagick mosaicImages ( void )
-bool motionBlurImage ( float $radius , float $sigma , float $angle [, int $channel = Imagick::CHANNEL_DEFAULT ] )
-bool negateImage ( bool $gray [, int $channel = Imagick::CHANNEL_ALL ] )
+ok - bool motionBlurImage ( float $radius , float $sigma , float $angle [, int $channel = Imagick::CHANNEL_DEFAULT ] )
+ok - bool negateImage ( bool $gray [, int $channel = Imagick::CHANNEL_ALL ] )
 ok - bool newImage ( int $cols , int $rows , mixed $background [, string $format ] )
-bool newPseudoImage ( int $columns , int $rows , string $pseudoString )
+ok - bool newPseudoImage ( int $columns , int $rows , string $pseudoString )
 bool nextImage ( void )
-bool normalizeImage ([ int $channel = Imagick::CHANNEL_ALL ] )
-bool oilPaintImage ( float $radius )
+ok - bool normalizeImage ([ int $channel = Imagick::CHANNEL_ALL ] )
+ok - bool oilPaintImage ( float $radius )
 bool opaquePaintImage ( mixed $target , mixed $fill , float $fuzz , bool $invert [, int $channel = Imagick::CHANNEL_DEFAULT ] )
 bool optimizeImageLayers ( void )
 bool orderedPosterizeImage ( string $threshold_map [, int $channel = Imagick::CHANNEL_ALL ] )
 bool paintFloodfillImage ( mixed $fill , float $fuzz , mixed $bordercolor , int $x , int $y [, int $channel = Imagick::CHANNEL_ALL ] )
-bool paintOpaqueImage ( mixed $target , mixed $fill , float $fuzz [, int $channel = Imagick::CHANNEL_ALL ] )
-bool paintTransparentImage ( mixed $target , float $alpha , float $fuzz )
+ok - bool paintOpaqueImage ( mixed $target , mixed $fill , float $fuzz [, int $channel = Imagick::CHANNEL_ALL ] )
+ok - bool paintTransparentImage ( mixed $target , float $alpha , float $fuzz )
 bool pingImage ( string $filename )
 bool pingImageBlob ( string $image )
 bool pingImageFile ( resource $filehandle [, string $fileName ] )
-bool polaroidImage ( ImagickDraw $properties , float $angle )
-bool posterizeImage ( int $levels , bool $dither )
-bool previewImages ( int $preview )
+ok - bool polaroidImage ( ImagickDraw $properties , float $angle )
+ok - bool posterizeImage ( int $levels , bool $dither )
+ok! - bool previewImages ( int $preview )
 bool previousImage ( void )
 bool profileImage ( string $name , string $profile )
 bool quantizeImage ( int $numberColors , int $colorspace , int $treedepth , bool $dither , bool $measureError )
@@ -2056,35 +2273,35 @@ array queryFontMetrics ( ImagickDraw $properties , string $text [, bool $multili
 array queryFonts ([ string $pattern = "*" ] )
 array queryFormats ([ string $pattern = "*" ] )
 bool radialBlurImage ( float $angle [, int $channel = Imagick::CHANNEL_ALL ] )
-bool raiseImage ( int $width , int $height , int $x , int $y , bool $raise )
-bool randomThresholdImage ( float $low , float $high [, int $channel = Imagick::CHANNEL_ALL ] )
+ok - bool raiseImage ( int $width , int $height , int $x , int $y , bool $raise )
+ok - bool randomThresholdImage ( float $low , float $high [, int $channel = Imagick::CHANNEL_ALL ] )
 ok - bool readImage ( string $filename )
 bool readImageBlob ( string $image [, string $filename ] )
 bool readImageFile ( resource $filehandle [, string $fileName = null ] )
 bool recolorImage ( array $matrix )
-bool reduceNoiseImage ( float $radius )
-public bool remapImage ( Imagick $replacement , int $DITHER )
+ok - bool reduceNoiseImage ( float $radius )
+bool remapImage ( Imagick $replacement , int $DITHER )
 bool removeImage ( void )
 string removeImageProfile ( string $name )
 bool render ( void )
-bool resampleImage ( float $x_resolution , float $y_resolution , int $filter , float $blur )
+ok! - bool resampleImage ( float $x_resolution , float $y_resolution , int $filter , float $blur )
 bool resetImagePage ( string $page )
 ok - bool resizeImage ( int $columns , int $rows , int $filter , float $blur [, bool $bestfit = false ] )
-bool rollImage ( int $x , int $y )
+ok - bool rollImage ( int $x , int $y )
 ok - bool rotateImage ( mixed $background , float $degrees )
-bool roundCorners ( float $x_rounding , float $y_rounding [, float $stroke_width = 10 [, float $displace = 5 [, float $size_correction = -6 ]]] )
-bool sampleImage ( int $columns , int $rows )
-bool scaleImage ( int $cols , int $rows [, bool $bestfit = false ] )
+ok - bool roundCorners ( float $x_rounding , float $y_rounding [, float $stroke_width = 10 [, float $displace = 5 [, float $size_correction = -6 ]]] )
+ok - bool sampleImage ( int $columns , int $rows )
+ok - bool scaleImage ( int $cols , int $rows [, bool $bestfit = false ] )
 bool segmentImage ( int $COLORSPACE , float $cluster_threshold , float $smooth_threshold [, bool $verbose = false ] )
-bool separateImageChannel ( int $channel )
-bool sepiaToneImage ( float $threshold )
+ok - bool separateImageChannel ( int $channel )
+ok - bool sepiaToneImage ( float $threshold )
 bool setBackgroundColor ( mixed $background )
 bool setColorspace ( int $COLORSPACE )
 ok - bool setCompression ( int $compression )
 bool setCompressionQuality ( int $quality )
 bool setFilename ( string $filename )
 bool setFirstIterator ( void )
-bool setFont ( string $font )
+ok - bool setFont ( string $font )
 bool setFormat ( string $format )
 bool setGravity ( int $gravity )
 ok - bool setImage ( Imagick $replace )
@@ -2142,35 +2359,35 @@ bool setSamplingFactors ( array $factors )
 bool setSize ( int $columns , int $rows )
 bool setSizeOffset ( int $columns , int $rows , int $offset )
 bool setType ( int $image_type )
-bool shadeImage ( bool $gray , float $azimuth , float $elevation )
-bool shadowImage ( float $opacity , float $sigma , int $x , int $y )
-bool sharpenImage ( float $radius , float $sigma [, int $channel = Imagick::CHANNEL_ALL ] )
-bool shaveImage ( int $columns , int $rows )
-bool shearImage ( mixed $background , float $x_shear , float $y_shear )
-bool sigmoidalContrastImage ( bool $sharpen , float $alpha , float $beta [, int $channel = Imagick::CHANNEL_ALL ] )
-bool sketchImage ( float $radius , float $sigma , float $angle )
-bool solarizeImage ( int $threshold )
+ok - bool shadeImage ( bool $gray , float $azimuth , float $elevation )
+ok - bool shadowImage ( float $opacity , float $sigma , int $x , int $y )
+ok - bool sharpenImage ( float $radius , float $sigma [, int $channel = Imagick::CHANNEL_ALL ] )
+ok - bool shaveImage ( int $columns , int $rows )
+ok - bool shearImage ( mixed $background , float $x_shear , float $y_shear )
+ok - bool sigmoidalContrastImage ( bool $sharpen , float $alpha , float $beta [, int $channel = Imagick::CHANNEL_ALL ] )
+ok - bool sketchImage ( float $radius , float $sigma , float $angle )
+ok - bool solarizeImage ( int $threshold )
 bool sparseColorImage ( int $SPARSE_METHOD , array $arguments [, int $channel = Imagick::CHANNEL_DEFAULT ] )
-bool spliceImage ( int $width , int $height , int $x , int $y )
-bool spreadImage ( float $radius )
+ok - bool spliceImage ( int $width , int $height , int $x , int $y )
+ok - bool spreadImage ( float $radius )
 Imagick steganoImage ( Imagick $watermark_wand , int $offset )
 bool stereoImage ( Imagick $offset_wand )
 bool stripImage ( void )
-bool swirlImage ( float $degrees )
+ok - bool swirlImage ( float $degrees )
 bool textureImage ( Imagick $texture_wand )
 bool thresholdImage ( float $threshold [, int $channel = Imagick::CHANNEL_ALL ] )
-bool thumbnailImage ( int $columns , int $rows [, bool $bestfit = false [, bool $fill = false ]] )
-bool tintImage ( mixed $tint , mixed $opacity )
+ok! - bool thumbnailImage ( int $columns , int $rows [, bool $bestfit = false [, bool $fill = false ]] )
+ok - bool tintImage ( mixed $tint , mixed $opacity )
 Imagick transformImage ( string $crop , string $geometry )
 bool transparentPaintImage ( mixed $target , float $alpha , float $fuzz , bool $invert )
-bool transposeImage ( void )
-bool transverseImage ( void )
-bool trimImage ( float $fuzz )
-bool uniqueImageColors ( void )
-bool unsharpMaskImage ( float $radius , float $sigma , float $amount , float $threshold [, int $channel = Imagick::CHANNEL_ALL ] )
+ok - bool transposeImage ( void )
+ok - bool transverseImage ( void )
+ok - bool trimImage ( float $fuzz )
+ok - bool uniqueImageColors ( void )
+ok - bool unsharpMaskImage ( float $radius , float $sigma , float $amount , float $threshold [, int $channel = Imagick::CHANNEL_ALL ] )
 bool valid ( void )
-bool vignetteImage ( float $blackPoint , float $whitePoint , int $x , int $y )
-bool waveImage ( float $amplitude , float $length )
+ok - bool vignetteImage ( float $blackPoint , float $whitePoint , int $x , int $y )
+ok - bool waveImage ( float $amplitude , float $length )
 dep - bool whiteThresholdImage ( mixed $threshold )
 ok - bool writeImage ([ string $filename ] )
 bool writeImageFile ( resource $filehandle )
