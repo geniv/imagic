@@ -57,6 +57,7 @@
         //->setImageFormat('png')
         //->setImagePage(200, 200, 1, 1)
         //->readImage($picture3)
+        //->readImage('picturedatabase')
         //->contrastStretchImage(1, 27, Imagic::CHANNEL_YELLOW)
         //->cropImage(200, 200, 50, 70)
         //->cropThumbnailImage(150, 150)

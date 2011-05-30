@@ -18,7 +18,7 @@
    *
    */
   final class Imagic {
-    protected $picture; //hlavni instance
+    private $picture; //hlavni instance
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
     //const IMAGICMIN = '6.5.0';
@@ -376,7 +376,7 @@
     }
 //------------------------------------------------------------------------------
     //redy
-    protected function getTempFile() {
+    private function getTempFile() {
       try {
 //musi se volat az po nastaveni pathu!!!!
         $result = NULL;
@@ -429,33 +429,40 @@
     }
 //------------------------------------------------------------------------------
     //redy
-    protected function getIdentify($file) {
+    private function getIdentify($file) {
+      try {
+        if (file_exists($file) &&
+            filesize($file) > 0) {
+          $identifyexec = exec(sprintf('identify \'%s\'', $file));
+          if (!empty($identifyexec)) {
+            $filestrlen = mb_strlen($file);
+            $identifysubstr = mb_substr($identifyexec, $filestrlen + 1);
+            $identifyexplode = explode(' ', $identifysubstr);
+          } else {
+            throw new ExceptionImagic('smazis se zase nacist/zpracovat neobrazkovy obrazek!');
+          }
+          //exec(sprintf('identify -verbose %s', $file), $identify_verbose);
+        } else {
+          var_dump($file, $this->picture);
+          throw new ExceptionImagic('smazis se zase nacist neexistujici a nebo prazdny obrazek!');
+        }
 
-      if (file_exists($file) &&
-          filesize($file) > 0) {
-        $identifyexec = exec(sprintf('identify \'%s\'', $file));
-        $filestrlen = mb_strlen($file);
-        $identifysubstr = mb_substr($identifyexec, $filestrlen + 1);
-        $identifyexplode = explode(' ', $identifysubstr);
-        //exec(sprintf('identify -verbose %s', $file), $identify_verbose);
-      } else {
-        echo 'smazis se zase nacist neexistujici a nebo prazdny obrazek!';
-        var_dump($file, $this->picture);
+        $this->picture->path = $file;
+        $this->picture->format = $identifyexplode[0];
+  //TODO kdyby blbnulo tak by se pouzije identify -verbose %s
+        $size_split = preg_split('/x|\+/', $identifyexplode[1]);
+        $this->picture->size = array ('width' => (int) $size_split[0],
+                                      'height' => (int) $size_split[1]);
+
+        $geometry_split = preg_split('/x|\+/', $identifyexplode[2]);
+        $this->picture->geometry = array ('width' => (int) $geometry_split[0],
+                                          'height' => (int) $geometry_split[1],
+                                          'x' => (int) $geometry_split[2],
+                                          'y' => (int) $geometry_split[3]);
+      } catch (ExceptionImagic $e) {
+        echo $e->getMessage();
         exit(1);
       }
-
-      $this->picture->path = $file;
-      $this->picture->format = $identifyexplode[0];
-//TODO kdyby blbnulo tak by se pouzije identify -verbose %s
-      $size_split = preg_split('/x|\+/', $identifyexplode[1]);
-      $this->picture->size = array ('width' => (int) $size_split[0],
-                                    'height' => (int) $size_split[1]);
-
-      $geometry_split = preg_split('/x|\+/', $identifyexplode[2]);
-      $this->picture->geometry = array ('width' => (int) $geometry_split[0],
-                                        'height' => (int) $geometry_split[1],
-                                        'x' => (int) $geometry_split[2],
-                                        'y' => (int) $geometry_split[3]);
       //$this->picture->verbose = $identify_verbose;
     }
 
@@ -1595,7 +1602,7 @@
       return $this->picture->_debug['cmd'];
     }
 //------------------------------------------------------------------------------
-    protected function executeCmd() {
+    private function executeCmd() {
 
       $final = 0;
       $count = 0;
@@ -1681,29 +1688,29 @@
     }
 //------------------------------------------------------------------------------
     //redy
-    protected static function getSignValue($value) {
+    private static function getSignValue($value) {
       return sprintf('%s%s', ($value >= 0 ? '+' : '-'), $value);
     }
 
     //redy
-    protected static function getSign($value) {
+    private static function getSign($value) {
       return ($value ? '+' : '-');
     }
 
-    protected static function isNull($array, $key, $default = '') {
+    private static function isNull($array, $key, $default = '') {
       //return (!is_null($array[$key]) ? $array[$key] : $default);
       return (array_key_exists($key, $array) ? $array[$key] : $default);
     }
 
     //redy
-    protected static function isFill($array, $key, $default = '') {
+    private static function isFill($array, $key, $default = '') {
       return (!empty($array[$key]) ? $array[$key] : $default);
       //return (!is_null($array[$key]) ? $array[$key] : $default);
       //return (array_key_exists($key, $array) ? $array[$key] : $default);
     }
 
     //redy
-    protected static function seraprateRGB($hex) {
+    private static function seraprateRGB($hex) {
       $result = NULL;
       $hex = array_slice(str_split($hex), 1); //orezani #
 
@@ -1718,12 +1725,12 @@
     }
 
     //redy
-    protected static function getBestfitValue($values, $index, $columns, $rows) {
+    private static function getBestfitValue($values, $index, $columns, $rows) {
       return (self::isFill($values, $index, false) ? '' : ($columns > 0 && $rows > 0 ? '!' : ''));
     }
 //------------------------------------------------------------------------------
     //redy
-    protected function setState($state, $code) {
+    private function setState($state, $code) {
       if (!$state) {
         echo sprintf('neco je spatne?! vraceny kod: <strong>%s</strong> !', $code);
       }
@@ -1861,11 +1868,16 @@
    *
    */
   final class ImagicDraw {
-    protected $draw = NULL;
+    private $draw = NULL;
 
     public function __construct() {
       $this->draw = new stdClass();
     }
+
+    //public function __call($name, $values) {
+      //TODO nasadit tady to pretezovani!
+    //}
+
 //FIXME dodelat zbyvajici funkce a overit ktere spadaji pod cmd drawu a nebo convertu!!!
 //a nasledne i ten pak predelat taky na fluent interface...! a overovani typu etc...
 //a halvne tu zajistit aby v cmd bylo vsechno s '', totiz draw obaluje s "" !!!!
