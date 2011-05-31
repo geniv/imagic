@@ -165,6 +165,8 @@
   $log1[] = ($image->getState() ? 'redy' : 'nekde je chyba');
   //$log1[] = implode('<br />', $canvas->getCmd());
   //$log1[] = implode('<br />', $image->getCmd());
+  //$log1[] = (Imagic::isPicture('picturedatabase') ? 'je obr' : 'neni obr');
+  $log1[] = (Imagic::isPicture($picture2) ? 'je obr' : 'neni obr');
 
   $image->destroy();
   $canvas->destroy();

@@ -1,0 +1,7 @@
+2011-05-31  geniv  <geniv.radek@gmail.com>
+
+ * vlozeni verzovani, zacina na 0.1.4
+ * verzovaji se da zjistit ve funkci: getVersion pod indexem: versionImagic
+ * pridana funkce na overovani jestli je soubor obrazkem
+ * overeni zda se jedna obrazkek bylo pridano i u konstruktoru
+

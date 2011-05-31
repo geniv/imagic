@@ -22,6 +22,7 @@
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
     //const IMAGICMIN = '6.5.0';
+    const VERSION = '0.1.4';
 
 //get_loaded_extensions()
 //extension_loaded()
@@ -424,7 +425,8 @@
       preg_match('/\d\.\d\.\d/', $version, $match);
       $result = array('versionNumber' => $match[0],
                       'versionInteger' => str_replace('.', '', $match[0]),
-                      'versionString' => $version);
+                      'versionString' => $version,
+                      'versionImagic' => self::VERSION);
       return (!empty($key) ? $result[$key] : $result);
     }
 //------------------------------------------------------------------------------
@@ -1698,15 +1700,12 @@
     }
 
     private static function isNull($array, $key, $default = '') {
-      //return (!is_null($array[$key]) ? $array[$key] : $default);
       return (array_key_exists($key, $array) ? $array[$key] : $default);
     }
 
     //redy
     private static function isFill($array, $key, $default = '') {
       return (!empty($array[$key]) ? $array[$key] : $default);
-      //return (!is_null($array[$key]) ? $array[$key] : $default);
-      //return (array_key_exists($key, $array) ? $array[$key] : $default);
     }
 
     //redy
@@ -1741,6 +1740,16 @@
       return $this->picture->state;
     }
 //------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+    public static function isPicture($file) {
+      $result = NULL;
+      if (file_exists($file) &&
+          filesize($file) > 0) {
+        $result = exec(sprintf('identify \'%s\'', $file));
+      }
+
+      return (!empty($result));
+    }
 //------------------------------------------------------------------------------
 
 /*
