@@ -327,7 +327,7 @@
 
             if (file_exists($files)) {
               $this->getIdentify($files); //nacteni identifikace
-            } else { throw new ExceptionImagic($files); }
+            } else { throw new ExceptionImagic(sprintf('obrazek %s neexistuje!', $files)); }
           }
         }
 
@@ -336,7 +336,7 @@
         }
 
       } catch (ExceptionImagic $e) {
-        echo sprintf('obrazek %s neexistuje!', $e->getMessage());
+        echo $e;
       }
     }
 
@@ -393,33 +393,21 @@
         if (is_writable($this->picture->temp_path)) {
           if (!file_exists($path)) {
             if (!@mkdir($path)) {
-              throw new ExceptionImagic(NULL, 100);
+              throw new ExceptionImagic('nelze vytvorit adresar tempu!');
             }
           }
 
           if (!$result = tempnam($path, self::IMAGICPREFIX)) {
-            throw new ExceptionImagic(NULL, 101);
+            throw new ExceptionImagic('nepodarilo se ziskat temp soubor');
           }
 
           $this->picture->_stream = $result;  //pro destruktor
         } else {
-          throw new ExceptionImagic($this->picture->temp_path, 102);
+          throw new ExceptionImagic(sprintf('nezle zapisovat do slozky: %s', $this->picture->temp_path));
         }
 
       } catch (ExceptionImagic $e) {
-        switch ($e->getCode()) {
-          case 100:
-            echo 'nelze vytvorit adresar tempu!';
-          break;
-
-          case 101:
-            echo 'nepodarilo se ziskat temp soubor';
-          break;
-
-          case 102:
-            echo sprintf('nezle zapisovat do slozky: %s', $e->getMessage());
-          break;
-        }
+        echo $e;
       }
 
       return $result;
@@ -1519,37 +1507,37 @@
           switch ($type) {
             case self::_C_NUMERIC: //kontrola na cisla
               if (!is_numeric($value)) {
-                throw new ExceptionImagic($value, 100);
+                throw new ExceptionImagic(sprintf('zadana hodnota "%s" v metode <strong>%s</strong> neni ciselna!', $value, $name));
               }
             break;
 
             case self::_C_STRING:  //kontrola textu
               if (!is_string($value)) {
-                throw new ExceptionImagic($value, 101);
+                throw new ExceptionImagic(sprintf('zadana hodnota "%s" v metode <strong>%s</strong> neni textova!', $value, $name));
               }
             break;
 
             case self::_C_BOOLEAN: //kontrola boolean
               if (!is_bool($value)) {
-                throw new ExceptionImagic($value, 102);
+                throw new ExceptionImagic(sprintf('zadana hodnota "%s" v metode <strong>%s</strong> neni booleovska!', $value, $name));
               }
             break;
 
             case self::_C_ARRAY: //kontrola array
               if (!is_array($value)) {
-                throw new ExceptionImagic($value, 103);
+                throw new ExceptionImagic(sprintf('zadana hodnota "%s" v metode <strong>%s</strong> neni pole!', $value, $name));
               }
             break;
 
             case self::_C_IMAGIC:  //kontrola instance Imagic
               if (!($value instanceof Imagic)) {
-                throw new ExceptionImagic(NULL, 104);
+                throw new ExceptionImagic(sprintf('zadana hodnota v metode <strong>%s</strong> nepochazi ze tridy Imagic!', $name));
               }
             break;
 
             case self::_C_IMAGICDRAW:  //kontrola instance ImagicDraw
               if (!($value instanceof ImagicDraw)) {
-                throw new ExceptionImagic(NULL, 105);
+                throw new ExceptionImagic(sprintf('zadana hodnota v metode <strong>%s</strong> nepochazi ze tridy ImagicDraw!', $name));
               }
             break;
           }
@@ -1567,32 +1555,7 @@
         $this->picture->task[] = $task;
 
       } catch (ExceptionImagic $e) {
-        $msg = $e->getMessage();
-        switch ($e->getCode()) {
-          case 100: //numeric
-            echo sprintf('zadana hodnota "%s" v metode <strong>%s</strong> neni ciselna!', $msg, $name);
-          break;
-
-          case 101: //string
-            echo sprintf('zadana hodnota "%s" v metode <strong>%s</strong> neni textova!', $msg, $name);
-          break;
-
-          case 102: //boolean
-            echo sprintf('zadana hodnota "%s" v metode <strong>%s</strong> neni booleovska!', $msg, $name);
-          break;
-
-          case 103: //array
-            echo sprintf('zadana hodnota "%s" v metode <strong>%s</strong> neni pole!', $msg, $name);
-          break;
-
-          case 104: //Imagic
-            echo sprintf('zadana hodnota v metode <strong>%s</strong> nepochazi ze tridy Imagic!', $name);
-          break;
-
-          case 105: //ImagicDraw
-            echo sprintf('zadana hodnota v metode <strong>%s</strong> nepochazi ze tridy ImagicDraw!', $name);
-          break;
-        }
+        echo $e;
       }
 //var_dump($task['cmd']); //TODO taky zapinat debugem!!!!
 
