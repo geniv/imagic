@@ -13,6 +13,9 @@
 
   include_once 'imagic.php';
 
+  use classes\Imagic,
+      classes\ImagicDraw;
+
   $problem = 'img/problem.jpg';
 
   $picture = 'img/Answer_to_Life.png';

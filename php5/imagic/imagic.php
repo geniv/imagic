@@ -17,12 +17,18 @@
    * Library Imagic
    *
    */
+
+  namespace classes;
+
+  use stdClass,
+      Exception;
+
   final class Imagic {
     private $picture; //hlavni instance
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
     //const IMAGICMIN = '6.5.0';
-    const VERSION = '0.1.4';
+    const VERSION = '1.5';
 
 //get_loaded_extensions()
 //extension_loaded()
@@ -462,7 +468,7 @@
                                           'x' => (int) $geometry_split[2],
                                           'y' => (int) $geometry_split[3]);
       } catch (ExceptionImagic $e) {
-        echo $e->getMessage();
+        echo $e;
         exit(1);
       }
       //$this->picture->verbose = $identify_verbose;
@@ -1700,7 +1706,7 @@
     }
 
     private static function isNull($array, $key, $default = '') {
-      return (array_key_exists($key, $array) ? $array[$key] : $default);
+      return (is_array($array) && array_key_exists($key, $array) ? $array[$key] : $default);
     }
 
     //redy

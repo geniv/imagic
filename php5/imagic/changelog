@@ -1,3 +1,9 @@
+2011-06-15  geniv  <geniv.radek@gmail.com>
+
+ * vlozeny jmene prostory, ukazka uziti v test.php (od verze PHP >= 5.3.X)
+ * pozmeneno verzovani, vypustena pocatecni nula
+
+
 2011-05-31  geniv  <geniv.radek@gmail.com>
 
  * vlozeni verzovani, zacina na 0.1.4
