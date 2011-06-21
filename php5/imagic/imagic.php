@@ -445,8 +445,12 @@
 
         $this->picture->path = $file;
         $this->picture->format = $identifyexplode[0];
-  //TODO kdyby blbnulo tak by se pouzije identify -verbose %s
+
+//FIXME predelat na: identify -verbose %s a u GIFu si davat bacha na: Scene: 0 of 8
+//var_dump($identifyexec);
+
         $size_split = preg_split('/x|\+/', $identifyexplode[1]);
+
         $this->picture->size = array ('width' => (int) $size_split[0],
                                       'height' => (int) $size_split[1]);
 

@@ -22,8 +22,9 @@
   $picture1 = 'img/Answer_to_Life_fill.png';
   $picture2 = 'img/lena_std.tiff';
   $picture3 = 'img/25909-bigthumbnail.jpg';
+  $picture4 = 'img/323_airlive.gif';  //poradne otestovat na GIFu!! buguje!
 
-  $load_picture = $picture3;
+  $load_picture = $picture4;
   $suffix = pathinfo($load_picture, PATHINFO_EXTENSION);
   $out1 = 'img/out1.'.$suffix;
   $out2 = 'img/out2.'.$suffix;

@@ -1,7 +1,13 @@
+2011-06-20  geniv  <geniv.radek@gmail.com>
+
+ * obejevena chyba pri przoovani GIFu, pri vetsi predelavce se to predela
+
+
 2011-06-15  geniv  <geniv.radek@gmail.com>
 
  * vlozeny jmene prostory, ukazka uziti v test.php (od verze PHP >= 5.3.X)
  * pozmeneno verzovani, vypustena pocatecni nula
+ * upraveno Exception
 
 
 2011-05-31  geniv  <geniv.radek@gmail.com>
