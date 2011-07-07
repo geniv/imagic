@@ -6,10 +6,11 @@
  *
  * Reimplement imagick libraries
  * 100% function garanteed on Linux
- * made by GFdesign for GoodFlowAdmin etc.
+ * created by GoodFlow Design
+ *
  * example using: http://eclecticdjs.com/mike/tutorials/php/imagemagick/
- * manual: http://www.php.net/manual/en/class.imagick.php
- * zpracovano s: Fluent Interfaces
+ * manual page: http://www.php.net/manual/en/class.imagick.php
+ * processed with: Fluent Interfaces
  */
 
   /**
@@ -28,7 +29,7 @@
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
     //const IMAGICMIN = '6.5.0';
-    const VERSION = '1.5';
+    const VERSION = 1.5.1;
 
 //get_loaded_extensions()
 //extension_loaded()
