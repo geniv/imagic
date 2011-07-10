@@ -430,7 +430,7 @@
       try {
         if (file_exists($file) &&
             filesize($file) > 0) {
-          $identifyexec = exec(sprintf('identify "%s"', $file));
+          $identifyexec = exec(sprintf('identify %s', escapeshellcmd($file)));
           if (!empty($identifyexec)) {
             $filestrlen = mb_strlen($file);
             $identifysubstr = mb_substr($identifyexec, $filestrlen + 1);
@@ -470,7 +470,7 @@
     //array identifyImage ([ bool $appendRawOutput = false ] )
     public function identifyImage($appendRawOutput = false) {
       $result = array();
-      exec(sprintf('identify -verbose "%s"', $this->picture->path), $identifyverbose);
+      exec(sprintf('identify -verbose %s', escapeshellcmd($this->picture->path)), $identifyverbose);
 
       $match = implode('', preg_grep('/Image\:/', $identifyverbose));
       $result['imageName'] = substr($match, 7);
@@ -1717,11 +1717,9 @@
 //------------------------------------------------------------------------------
     public static function isPicture($file) {
       $result = NULL;
-      if (file_exists($file) &&
-          filesize($file) > 0) {
-        $result = exec(sprintf('identify "%s"', $file));
+      if (file_exists($file) && filesize($file) > 0) {
+        $result = exec(sprintf('identify %s', escapeshellcmd($file)));
       }
-
       return (!empty($result));
     }
 //------------------------------------------------------------------------------
