@@ -29,7 +29,7 @@
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
     //const IMAGICMIN = '6.5.0';
-    const VERSION = 1.5.1;
+    const VERSION = 1.52;
 
 //get_loaded_extensions()
 //extension_loaded()
@@ -430,7 +430,7 @@
       try {
         if (file_exists($file) &&
             filesize($file) > 0) {
-          $identifyexec = exec(sprintf('identify \'%s\'', $file));
+          $identifyexec = exec(sprintf('identify "%s"', $file));
           if (!empty($identifyexec)) {
             $filestrlen = mb_strlen($file);
             $identifysubstr = mb_substr($identifyexec, $filestrlen + 1);
@@ -470,7 +470,7 @@
     //array identifyImage ([ bool $appendRawOutput = false ] )
     public function identifyImage($appendRawOutput = false) {
       $result = array();
-      exec(sprintf('identify -verbose \'%s\'', $this->picture->path), $identifyverbose);
+      exec(sprintf('identify -verbose "%s"', $this->picture->path), $identifyverbose);
 
       $match = implode('', preg_grep('/Image\:/', $identifyverbose));
       $result['imageName'] = substr($match, 7);
@@ -501,7 +501,7 @@
       $result['fileSize'] = substr($match, 12);
 
       if ($appendRawOutput) {
-        $result['rawOutput'] = implode("\n", $identifyverbose);
+        $result['rawOutput'] = implode(PHP_EOL, $identifyverbose);
       }
 
       return $result;
@@ -1637,7 +1637,7 @@
 //var_dump($cmdarray);
         $this->picture->_debug['cmd'] = $cmdarray;
 
-        $allcmd = implode("\n", $cmdarray);
+        $allcmd = implode(PHP_EOL, $cmdarray);
         exec($allcmd, $stdout); //vykonani vsech prikazu zaraz
 
 //TODO tento vypis zapinat pres nejakou metodu pro DEBUG!!!
@@ -1719,7 +1719,7 @@
       $result = NULL;
       if (file_exists($file) &&
           filesize($file) > 0) {
-        $result = exec(sprintf('identify \'%s\'', $file));
+        $result = exec(sprintf('identify "%s"', $file));
       }
 
       return (!empty($result));
@@ -1872,7 +1872,7 @@
 
       $cmd = NULL;
       if (!empty($this->draw->cmd)) {
-        $cmd = implode("\n", $this->draw->cmd);
+        $cmd = implode(PHP_EOL, $this->draw->cmd);
       }
       return sprintf('%s -draw \'%s\'', $convert, $cmd);
     }
