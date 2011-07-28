@@ -430,10 +430,10 @@
       try {
         if (file_exists($file) &&
             filesize($file) > 0) {
-          $identifyexec = exec(sprintf('identify %s', escapeshellcmd($file)));
+          $identifyexec = exec(sprintf('identify %s', escapeshellcmd($file)));  //FIXME musi byt jiny identify!!!!!
           if (!empty($identifyexec)) {
             $filestrlen = mb_strlen($file);
-            $identifysubstr = mb_substr($identifyexec, $filestrlen + 1);
+            $identifysubstr = mb_substr($identifyexec, $filestrlen + 1);  //FIXME magori pri gifech
             $identifyexplode = explode(' ', $identifysubstr);
           } else {
             throw new ExceptionImagic('smazis se zase nacist/zpracovat neobrazkovy obrazek!');
@@ -443,10 +443,10 @@
           var_dump($file, $this->picture);
           throw new ExceptionImagic('smazis se zase nacist neexistujici a nebo prazdny obrazek!');
         }
-
+//var_dump($identifyexec, $identifyexplode);
         $this->picture->path = $file;
         $this->picture->format = $identifyexplode[0];
-
+//var_dump($identifysubstr, $this->picture->format);
 //FIXME predelat na: identify -verbose %s a u GIFu si davat bacha na: Scene: 0 of 8
 //var_dump($identifyexec);
 
