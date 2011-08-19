@@ -13,22 +13,22 @@
 
   include_once 'imagic.php';
 
-  use classes\Imagic,
-      classes\ImagicDraw;
+  use classes\Imagic, classes\ImagicDraw;
 
   $problem = 'img/problem.jpg';
 
   $picture = 'img/Answer_to_Life.png';
   $picture1 = 'img/Answer_to_Life_fill.png';
+  $picture12 = 'img/Answer=to_Life.png';
   $picture2 = 'img/lena_std.tiff';
   $picture3 = 'img/25909-bigthumbnail.jpg';
-  $picture4 = 'img/323_airlive.gif';  //poradne otestovat na GIFu!! buguje!
+  $picture4 = 'img/323_airlive.gif';
+  $picture5 = 'img/gambas-logo.png';
 
-  $load_picture = $picture4;
+  $load_picture = $picture3;
   $suffix = pathinfo($load_picture, PATHINFO_EXTENSION);
   $out1 = 'img/out1.'.$suffix;
   $out2 = 'img/out2.'.$suffix;
-
 
   $log1 = $log2 = array();
 
@@ -41,23 +41,30 @@
         ->annotation(10, 40, 'nekoukej, kukuč :D')
         ;
 
-  $canvas = new Imagic();
-  $canvas->setTempPath('img')
+  //$canvas = new Imagic($picture5, 'img');
+  //$canvas->setTempPath('img')
           //->newImage(50, 50, 'gold')
           //->setImageFormat('jpg')
-          ->newPseudoImage(100, 100, 'gradient:blue-red')
-          ->setImageFormat('jpg')
-          ->rotateImage('skyblue', 39)
+          //->newPseudoImage(100, 100, 'gradient:blue-red')
+          //->setImageFormat('jpg')
+          //->rotateImage('skyblue', 39)
           //->setImageFilename('img/pokus1.jpg')
           //->writeImage()
-          ;
+          //;
+  //$canvas = new Imagic;
+  //$canvas->newImage(400, 200, '#636363');
 
   $points = array(0,0, 25,25,
                  100,0, 100,50);
 
-  $image = new Imagic($load_picture);
-  $image->setTempPath('img')
+  //var_dump(Imagic::isPicture($load_picture));
+
+  $image = new Imagic($load_picture, 'img');
+  //var_dump($image);
+  $image//->setTempPath('img')
         //->setImageFilename($picture2)
+        //->setImageMatte(true)
+        //->setImageMatteColor('#dddddd')
         //->setImageFormat('png')
         //->setImagePage(200, 200, 1, 1)
         //->readImage($picture3)
@@ -134,7 +141,7 @@
         //->gaussianBlurImage(10, 20, Imagic::CHANNEL_RED)
         //->setImage($canvas)
         //->resizeImage(400, 400, Imagic::FILTER_HAMMING, 0, true)
-        //->thumbnailImage(0, 200, true)
+        //->thumbnailImage(500, 500, true)
         //->adaptiveBlurImage(5, 3)
         //->adaptiveBlurImage(5, 4, Imagic::CHANNEL_RED)
         //->adaptiveResizeImage(0, 768)
@@ -147,21 +154,23 @@
         //->annotateImage($draw, 10, 45, 0, 'The quick brown fox jumps over the lazy dog')
         //->clipImage()
         //->colorizeImage('#000078', 0)
-        //->compositeImage($canvas, Imagic::COMPOSITE_OVER, 30, 40)
+        //->compositeImage($canvas, Imagic::COMPOSITE_OVER, 5, 5)
         //->borderImage('red', 10, 10)
         //->borderImage('gold', 5, 5)
         //->compositeImage($canvas, Imagic::COMPOSITE_OVER, 100, 100)
         //->borderImage('blue', 2, 2)
         //->contrastImage(false)
-        ->writeImage($out1)
-        ;
+        ->writeImage($out1);
 //echo $image->getImage();
 //var_dump($image->identifyImage());
 
   //$image->writeImage($out1);
+  //var_dump($image->getImageBlob());
 
   $log1[] = $image->getImageFilename();
   $log1[] = $image->getImageFormat();
+  $log1[] = $image->getImageMimeType();
+  $log1[] = $image->getImageSize();
   $log1[] = 'w:'.$image->getImageWidth();
   $log1[] = 'h:'.$image->getImageHeight();
   $log1[] = $image->getImageDelay();
@@ -172,8 +181,13 @@
   //$log1[] = (Imagic::isPicture('picturedatabase') ? 'je obr' : 'neni obr');
   $log1[] = (Imagic::isPicture($picture2) ? 'je obr' : 'neni obr');
 
+  //$image->setImageIndex(6);
+  //$image->nextImage();
+  //$image->previousImage();
+  //var_dump($image->hasPreviousImage(), $image->hasNextImage(), $image->getImageIndex());
+
   $image->destroy();
-  $canvas->destroy();
+  //$canvas->destroy();
 
 //var_dump($image->getImageGeometry());
 //var_dump($image->getImagePage());
@@ -184,8 +198,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-  $localhost = array('127.0.0.1', '127.0.1.1'); //omezeni jen na local
-  if (in_array($_SERVER['REMOTE_ADDR'], $localhost)) {
+  if (extension_loaded('Imagick')) {
 
     $draw = new ImagickDraw();
     $draw->setFillColor('#999999');
@@ -203,6 +216,8 @@
     //$canvas->writeImage();
 
     $image = new Imagick($load_picture);
+    //$image->setImageMatte(true);
+    //$image->setImageMatteColor('#dddddd');
     //$image->setImageFilename($picture2);
     //$image->setImageFormat('tiff');
     //$image->setImagePage(200, 200, 1, 1);
@@ -306,10 +321,15 @@
     //$image->compositeImage($canvas, Imagick::COMPOSITE_OVER, 100, 100);
     //$image->borderImage('blue', 2, 2);
     //$image->contrastImage(false);
+    //var_dump($image->getImageCompressionQuality(), $image->getCompressionQuality());
     $image->writeImage($out2);
+
+    //var_dump($image->getImageBlob());
 
     $log2[] = $image->getImageFilename();
     $log2[] = $image->getImageFormat();
+    $log2[] = $image->getImageMimeType();
+    $log2[] = $image->getImageSize();
     $log2[] = 'w:'.$image->getImageWidth();
     $log2[] = 'h:'.$image->getImageHeight();
     $log2[] = $image->getImageDelay();
@@ -364,7 +384,3 @@ $result = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.
 echo $result;
 
 ?>
-
-
-
-

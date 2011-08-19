@@ -9,9 +9,20 @@
  * created by GoodFlow Design
  *
  * example using: http://eclecticdjs.com/mike/tutorials/php/imagemagick/
+ *                http://valokuva.org/?cat=1
+ *                http://www.imagemagick.org/script/command-line-options.php
+ *
  * manual page: http://www.php.net/manual/en/class.imagick.php
- * processed with: Fluent Interfaces
+ *              http://www.php.net/manual/en/book.imagick.php
+ *
+ * use: http://imagemagick.org/script/escape.php
+ *
+ * use with: Fluent Interfaces
  */
+//TODO projit: http://www.rubblewebs.co.uk/imagemagick/
+//http://www.imagemagick.org/Usage/anim_basics/
+//http://valokuva.org/?cat=1
+//http://www.imagemagick.org/script/command-line-options.php
 
   /**
    *
@@ -29,10 +40,9 @@
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
     //const IMAGICMIN = '6.5.0';
-    const VERSION = 1.52;
+    const VERSION = 1.68;
 
-//get_loaded_extensions()
-//extension_loaded()
+//TODO zabudovat pak i array iterator????
 
     //channel
     const CHANNEL_DEFAULT = 'Default';
@@ -59,6 +69,12 @@
     const CHANNEL_MATTE = 'Matte';
     const CHANNEL_SATURATION = 'Saturation';
     const CHANNEL_SYNC = 'Sync';
+
+    //dispose
+    const DISPOSE_NONE = 'None';
+    const DISPOSE_UNDEFINED = 'Undefined';
+    const DISPOSE_BACKGROUND = 'Background';
+    const DISPOSE_PREVIOUS = 'Previous';
 
     //colorspace
     const COLORSPACE_CMY = 'CMY';
@@ -301,18 +317,17 @@
     const _CMDTYPE_SPECIAL = 'special';
 
 //------------------------------------------------------------------------------
-    //redy
-    public function __construct($files = NULL) {
+    //redy - vytvareni instance Imagic
+    public function __construct($files = NULL, $path = NULL) {
       try {
-        $this->picture = new stdClass();
+        $this->picture = new stdClass;
         $this->picture->path = NULL;
         $this->picture->format = NULL;
         $this->picture->size = NULL;
         $this->picture->geometry = NULL;
         $this->picture->task = NULL;
-        $this->picture->compress = NULL;
+
         $this->picture->font = NULL;
-        $this->picture->delay = 0;
         $this->picture->temp_path = '.';
         $this->picture->state = true;
         $this->picture->version = self::getVersion();
@@ -320,20 +335,35 @@
         $this->picture->_remove = array();  //pro uklid prebytku
         $this->picture->_debug = array();
 
+        $this->picture->quality = 0;
+        $this->picture->compress = NULL;
+        $this->picture->dispose = NULL;
+        $this->picture->signature = NULL;
+        $this->picture->delay = array();
+        $this->picture->transparent = NULL;
+        $this->picture->channel = NULL;
+        $this->picture->colorspace = NULL;
+        $this->picture->depth = NULL;
+
+        $this->picture->animation = false;  //detekce jestli je animace ci ne
+        $this->picture->anim_index = 0;
+        $this->picture->anim_count = 0;
+
+        if (!empty($path) && is_writable($path)) {
+          $this->setTempPath($path);  //pokud se tu extra nastavi path
+          $this->getTempFile();  //nacteni streamu
+        }
+
         //nacteni obrazku do temp souboru
         if (!empty($files)) {
           if (is_array($files)) {
-           //TODO muze nacitat i pole cest?????!!!
+           //TODO muze nacitat i pole cest -> konvert na gif
           } else {
-
             if (file_exists($files)) {
               $this->getIdentify($files); //nacteni identifikace
-            } else { throw new ExceptionImagic(sprintf('obrazek %s neexistuje!', $files)); }
+              $this->copyPath2Stream($files);
+            } else { throw new ExceptionImagic(sprintf('picture %s doen not exist!', $files)); }
           }
-        }
-
-        if (is_writable($this->picture->temp_path)) {
-          $this->getTempFile();  //nacteni streamu, pokud jde tedy zapisovat
         }
 
       } catch (ExceptionImagic $e) {
@@ -344,6 +374,19 @@
     //redy
     public function __destruct() {
       $this->destroy();
+    }
+//------------------------------------------------------------------------------
+    //kopirovani path do _stream
+    private function copyPath2Stream($path) {
+      if (empty($this->picture->_stream)) {
+        $this->getTempFile();  //nacteni streamu, pokud neexistuje
+      }
+      return copy($path, $this->picture->_stream);
+    }
+
+    //kopirovani _stream do path
+    private function copyStream2Path($path) {
+      $result = copy($this->picture->_stream, $path);
     }
 //------------------------------------------------------------------------------
     //bool destroy ( void )
@@ -362,38 +405,19 @@
       }
       //odalokovani
       unset($this->picture);
-    }
-
-//FIXME dodelat poradnou implementaci!
-    public static function destroyTemp() {
-      //pac temp se dokaze zaplnit i pri neuspesnem pokusu o vygeneorvani
-      //kontrolovat dle data stari, max tak 24hodin stare mazat
-/*
-      $temp_path = $this->tempdir;
-      $files = scandir($temp_path);
-      if (!empty($files)) {
-        foreach ($files as $file) {
-          if ($file != '.' && $file != '..') {
-            $path = sprintf('%s/%s', $temp_path, $file);
-            //test jestli se zadarilo smazat
-            unlink($path);
-          }
-        }
-      }
-*/
+      //slozku tempu necha
     }
 //------------------------------------------------------------------------------
-    //redy
+    //redy - vytvoreni docasneho _stream souboru
     private function getTempFile() {
       try {
-//musi se volat az po nastaveni pathu!!!!
         $result = NULL;
         $path = sprintf('%s/%s', $this->picture->temp_path, self::TEMPDIR);
-
+//SplTempFileObject
         //pokud se da zapisovat do pathe
         if (is_writable($this->picture->temp_path)) {
           if (!file_exists($path)) {
-            if (!@mkdir($path)) {
+            if (!@mkdir($path, 0777)) {
               throw new ExceptionImagic('nelze vytvorit adresar tempu!');
             }
           }
@@ -410,7 +434,6 @@
       } catch (ExceptionImagic $e) {
         echo $e;
       }
-
       return $result;
     }
 //------------------------------------------------------------------------------
@@ -419,58 +442,227 @@
       $version = exec('identify -version | head -n 1 | cut -c 10-');
       preg_match('/\d\.\d\.\d/', $version, $match);
       $result = array('versionNumber' => $match[0],
-                      'versionInteger' => str_replace('.', '', $match[0]),
+                      'versionInteger' => (int) str_replace('.', '', $match[0]),
                       'versionString' => $version,
                       'versionImagic' => self::VERSION);
       return (!empty($key) ? $result[$key] : $result);
     }
 //------------------------------------------------------------------------------
-    //redy
+    //zpracovani dat z ifentify na asociativni pole
+    private static function parseData($input) {
+      $data_explode = explode('||', $input);
+      $func_key = function($value) { $exp = explode('=', $value, 2); return $exp[0]; };
+      $keys = array_map($func_key, $data_explode);  //parsnuti klicu
+      $func_val = function($value) { $exp = explode('=', $value, 2); return $exp[1]; };
+      $values = array_map($func_val, $data_explode);  //parsnuti hodnot
+      return array_combine($keys, $values); //slouceni poli
+    }
+
+    //konstanta formatu exec identify
+    const IDENTIFY_FORMAT = 'identify -format "name=%f||format=%m||w=%w||h=%h||geometry=%Wx%H,%X,%Y||delay=%T||quality=%Q||compress=%C||dispose=%D||signature=%#||transparent=%A||channel=%[channels]||colorspace=%[colorspace]||depth=%z||index=%[scene]||count=%[scenes]\n" ';  //za to jeste nazev
+
+    //redy - nacitani informaci o obrazku
     private function getIdentify($file) {
       try {
-        if (file_exists($file) &&
-            filesize($file) > 0) {
-          $identifyexec = exec(sprintf('identify %s', escapeshellcmd($file)));  //FIXME musi byt jiny identify!!!!!
-          if (!empty($identifyexec)) {
-            $filestrlen = mb_strlen($file);
-            $identifysubstr = mb_substr($identifyexec, $filestrlen + 1);  //FIXME magori pri gifech
-            $identifyexplode = explode(' ', $identifysubstr);
+        if (file_exists($file) && filesize($file) > 0) {
+          //identifikace obrazku
+          exec(self::IDENTIFY_FORMAT.escapeshellarg($file), $ret);
+          if (!empty($ret)) {
+            $base_data = self::parseData($ret[0]); //zpracovani prvniho radku
+
+            $count = $base_data['count']; //pocet obrazku
+
+            $this->picture->path = $base_data['name'];
+            $this->picture->format = $base_data['format'];
+            $this->picture->compress = $base_data['compress'];
+            $this->picture->quality = $base_data['quality'];
+            $this->picture->channel = $base_data['channel'];
+            $this->picture->depth = $base_data['depth'];
+            $this->picture->animation = true;
+            if ($count > 1) {  //vraci o radek vic
+              //zpracovani serie obrazku - gif
+              $this->picture->anim_count = $count;
+              foreach ($ret as $ret_row) {
+                if (!empty($ret_row)) { //nacit jen neprazdne radky
+                  $row = self::parseData($ret_row);
+                  $index = $row['index'];
+                  $this->picture->size[$index] = $this->parseSize($row);
+                  $this->picture->geometry[$index] = $this->parseGeometry($row['geometry']);
+                  $this->picture->delay[$index] = $row['delay'];
+                  $this->picture->dispose[$index] = $row['dispose'];
+                  $this->picture->signature[$index] = $row['signature'];
+                  $this->picture->transparent[$index] = $row['transparent'];
+                  $this->picture->colorspace[$index] = $row['colorspace'];
+
+                }
+              }
+            } else {
+              //zpracovani jednoho obrazku
+              $this->picture->path = $base_data['name'];
+              $this->picture->format = $base_data['format'];
+              $this->picture->compress = $base_data['compress'];  //FIXME zajistit vnitrni interpretaci techto funkci!!!
+              $this->picture->quality = $base_data['quality'];
+              $this->picture->channel = $base_data['channel'];
+              $this->picture->size = $this->parseSize($base_data);
+              $this->picture->geometry = $this->parseGeometry($base_data['geometry']);
+              $this->picture->delay = $base_data['delay'];
+              $this->picture->dispose = $base_data['dispose'];
+              $this->picture->signature = $base_data['signature'];
+              $this->picture->transparent = $base_data['transparent'];
+              $this->picture->colorspace = $base_data['colorspace'];
+              $this->picture->depth = $base_data['depth'];
+              $this->picture->animation = false;
+            }
           } else {
-            throw new ExceptionImagic('smazis se zase nacist/zpracovat neobrazkovy obrazek!');
+            throw new ExceptionImagic('Nepodarilo se nacist identifikaci obrazku!');
           }
-          //exec(sprintf('identify -verbose %s', $file), $identify_verbose);
         } else {
           var_dump($file, $this->picture);
-          throw new ExceptionImagic('smazis se zase nacist neexistujici a nebo prazdny obrazek!');
+          throw new ExceptionImagic('Smazis se nacist neexistujici a nebo prazdny obrazek!');
         }
-//var_dump($identifyexec, $identifyexplode);
-        $this->picture->path = $file;
-        $this->picture->format = $identifyexplode[0];
-//var_dump($identifysubstr, $this->picture->format);
-//FIXME predelat na: identify -verbose %s a u GIFu si davat bacha na: Scene: 0 of 8
-//var_dump($identifyexec);
-
-        $size_split = preg_split('/x|\+/', $identifyexplode[1]);
-
-        $this->picture->size = array ('width' => (int) $size_split[0],
-                                      'height' => (int) $size_split[1]);
-
-        $geometry_split = preg_split('/x|\+/', $identifyexplode[2]);
-        $this->picture->geometry = array ('width' => (int) $geometry_split[0],
-                                          'height' => (int) $geometry_split[1],
-                                          'x' => (int) $geometry_split[2],
-                                          'y' => (int) $geometry_split[3]);
       } catch (ExceptionImagic $e) {
         echo $e;
         exit(1);
       }
-      //$this->picture->verbose = $identify_verbose;
+    }
+//------------------------------------------------------------------------------
+    private function parseSize($input) {
+      return array ('width' => (int) $input['w'],
+                    'height' => (int) $input['h']);
+    }
+    //parsovani geometry
+    private function parseGeometry($input) {
+      $split = preg_split('/x|\,/', $input);
+      return array ('width' => (int) $split[0],
+                    'height' => (int) $split[1],
+                    'x' => (int) $split[2],
+                    'y' => (int) $split[3]);
+    }
+//------------------------------------------------------------------------------
+    //int getNumberImages ( void )
+    public function getNumberImages() {
+      return $this->picture->anim_count;
     }
 
+    //int getImageIndex ( void ) - nacitani indexu obrazku
+    public function getImageIndex() {
+      return $this->picture->anim_index;
+    }
+
+    //bool setImageIndex ( int $index ) - nastaveni indexu obrazku
+    public function setImageIndex($index) {
+      $this->picture->anim_index = $index;
+      return $this;
+    }
+
+    //bool nextImage ( void )
+    public function nextImage() {
+      //pokud je mozne pricist, inkrementuje
+      if ($this->hasNextImage()) {
+        $this->picture->anim_index++;
+      }
+      return $this;
+    }
+
+    //bool previousImage ( void )
+    public function previousImage() {
+      //pokud je mozne odecist, dekrementuje
+      if ($this->hasPreviousImage()) {
+        $this->picture->anim_index--;
+      }
+      return $this;
+    }
+
+    //bool hasNextImage ( void )
+    public function hasNextImage() {
+      return ($this->picture->anim_index + 1 < $this->picture->anim_count);
+    }
+
+    //bool hasPreviousImage ( void )
+    public function hasPreviousImage() {
+      return ($this->picture->anim_index - 1 >= 0);
+    }
+//------------------------------------------------------------------------------
+    //int getImageDispose ( void )
+    public function getImageDispose() {
+      return ($this->picture->animation ? $this->picture->dispose[$this->picture->anim_index] : $this->picture->dispose);
+    }
+
+    //bool setImageDispose ( int $dispose )
+    public function setImageDispose($dispose) {
+      if ($this->picture->animation) {
+        $this->picture->dispose[$this->picture->anim_index] = $dispose;
+      } else {
+        $this->picture->dispose = $dispose;
+      }
+      return $this;
+    }
+//------------------------------------------------------------------------------
+    //string getImageSignature ( void )
+    public function getImageSignature() {
+      return ($this->picture->animation ? $this->picture->signature[$this->picture->anim_index] : $this->picture->signature);
+    }
+//------------------------------------------------------------------------------
+    //int getImageCompression ( void )
+    public function getImageCompression() {
+      return $this->picture->compress;
+    }
+
+    //bool setImageCompression ( int $compression )
+    public function setImageCompression($compression) {
+      $this->picture->compress = $compression;  //def: 75~80
+      return $this;
+    }
+//FIXME v cmd: -quality xx ,defaultne 80
+    //int getImageCompressionQuality ( void )
+    public function getImageCompressionQuality() {
+      return $this->picture->quality;
+    }
+//a sem prijdou konstanty!
+    //bool setImageCompressionQuality ( int $quality )
+    public function setImageCompressionQuality($quality) {
+      $this->picture->quality = $dispose;
+      return $this;
+    }
+
+    //int getImageColorspace ( void )
+    public function getImageColorspace() {
+      return ($this->picture->animation ? $this->picture->colorspace[$this->picture->anim_index] : $this->picture->colorspace);
+    }
+
+    //int getImageDepth ( void )
+    public function getImageDepth() {
+      return $this->picture->depth;
+    }
+
+    //bool setImageDepth ( int $depth )
+    public function setImageDepth($depth) {
+      $this->picture->depth = $depth;
+      return $this;
+    }
+
+    //int getImageSize ( void )
+    public function getImageSize() {
+      return filesize($this->picture->_stream);
+    }
+
+    //string getImageMimeType ( void )
+    public function getImageMimeType() {
+      $ret = getimagesize($this->picture->_stream);
+      return $ret['mime'];
+    }
+
+    //getImageChannelDepth
+    public function getImageChannel() {
+      return $this->picture->channel;
+    }
+
+    //TODO getImageLoop, setImageLoop
+//------------------------------------------------------------------------------
     //array identifyImage ([ bool $appendRawOutput = false ] )
     public function identifyImage($appendRawOutput = false) {
       $result = array();
-      exec(sprintf('identify -verbose %s', escapeshellcmd($this->picture->path)), $identifyverbose);
+      exec(sprintf('identify -verbose %s', escapeshellarg($this->picture->path)), $identifyverbose);
 
       $match = implode('', preg_grep('/Image\:/', $identifyverbose));
       $result['imageName'] = substr($match, 7);
@@ -542,12 +734,12 @@
 //------------------------------------------------------------------------------
     //array getImageGeometry ( void )
     public function getImageGeometry() {
-      return $this->picture->size;
+      return ($this->picture->animation ? $this->picture->size[$this->picture->anim_index] : $this->picture->size);
     }
 //------------------------------------------------------------------------------
     //array getImagePage ( void )
     public function getImagePage() {
-      return $this->picture->geometry;
+      return ($this->picture->animation ? $this->picture->geometry[$this->picture->anim_index] : $this->picture->geometry);
     }
 
     //bool setImagePage ( int $width , int $height , int $x , int $y )
@@ -561,40 +753,38 @@
 //------------------------------------------------------------------------------
     //int getImageHeight ( void )
     public function getImageHeight() {
-      return $this->picture->size['height'];
+      return ($this->picture->animation ? $this->picture->size[$this->picture->anim_index]['height'] : $this->picture->size['height']);
     }
 //------------------------------------------------------------------------------
     //int getImageWidth ( void )
     public function getImageWidth() {
-      return $this->picture->size['width'];
+      return ($this->picture->animation ? $this->picture->size[$this->picture->anim_index]['width'] : $this->picture->size['width']);
     }
 //------------------------------------------------------------------------------
     //int getImageDelay ( void )
     public function getImageDelay() {
-      return $this->picture->delay;
+      return $this->picture->delay[$this->picture->anim_index];
     }
-//FIXME pozor musi se zadavat k jednotlivim obrazkum!!!! pri retezovem zpracovani!
-//neaplikovano! zaimplementovat!!
+
     //bool setImageDelay ( int $delay )
     public function setImageDelay($delay) {
-      $this->picture->delay = $delay;
+      $this->picture->delay[$this->picture->anim_index] = $delay; //pridava vzdy do pole
       return $this;
     }
 //------------------------------------------------------------------------------
-    //int getCompression ( void )
-    public function getCompression() {
-      return $this->picture->compress;
-    }
 
-    //bool setCompression ( int $compression )
-    public function setCompression($compression) {
-      $this->picture->compress = $compression;
-      return $this;
-    }
 //------------------------------------------------------------------------------
     //Imagick getImage ( void )
     public function getImage() {
-      return file_get_contents($this->picture->_stream);
+      $result = NULL;
+//FIXME Returns a new Imagick object with the current image sequence. Throw an ImagickException on error.
+      //$this->executeCmd();  //nachroustani prikazu
+/*
+      if (!empty($this->picture->_stream)) {
+        $result = file_get_contents($this->picture->_stream);
+      }
+      return $result;
+*/
     }
 
     //bool setImage ( Imagick $replace )
@@ -623,13 +813,13 @@
       if (file_exists($filename)) {
         $this->getIdentify($filename); //nacteni identifikace
       }
-
+//FIXME nacteni i obrazku do streamu!!!!!
       return $this;
     }
 
     //bool writeImage ([ string $filename ] )
     public function writeImage($filename = NULL) {
-
+      $result = false;
       $this->executeCmd();  //nachroustani prikazu
 
       if (!empty($filename)) {
@@ -646,23 +836,23 @@
           //pokud se lisi koncovky provede prejmenovani s convertem
           $filenameformat = pathinfo($filename, PATHINFO_EXTENSION);
           if ($filenameformat != $this->picture->format) {
-            exec(sprintf('convert \'%s\' \'%s\'', $this->picture->path, $filename));
+            exec(sprintf('convert \'%s\' \'%s\'', $this->picture->path, $filename), $out, $result);
           } else {
-            copy($this->picture->path, $filename);
+            $result = copy($this->picture->path, $filename);
           }
 
         } else {
-          copy($this->picture->_stream, $filename);
+          $result = copy($this->picture->_stream, $filename);
         }
 
-        $this->getIdentify($filename); //nacteni identifikace
+        //$this->getIdentify($filename); //nacteni identifikace, ????????????????
 
       } else {
 
         if (!empty($this->picture->path)) {
           $filename = $this->picture->path;
 
-          copy($this->picture->_stream, $filename);
+          $result = copy($this->picture->_stream, $filename);
           //exec(sprintf('convert \'%s\' \'%s\'', $this->picture->_stream, $filename));
 //FIXME udelat spravny konvert na format!!!!?!
           $this->getIdentify($filename); //nacteni identifikace
@@ -673,8 +863,10 @@
         }
       }
 
-      return $this;
+      return $result;
     }
+
+    //public function writeImages() {} //TODO dodelat?!!
 //------------------------------------------------------------------------------
     //redy
     public function getDataImagic() {
@@ -776,7 +968,7 @@
           case 'borderImage':
             $check = array(self::_C_STRING, self::_C_NUMERIC, self::_C_NUMERIC);
             $version = '600';
-            $format = '-bordercolor \'%s\' -border %sx%s';
+            $format = '-bordercolor "%s" -border %sx%s';
           break;
 
           //bool charcoalImage ( float $radius , float $sigma )
@@ -1261,7 +1453,7 @@
               case 2:
                 $values = array($this->picture->_stream, $w, $h, 0, 0, 0, $w, $h, $x_rounding, $y_rounding, $this->picture->_stream);
               break;
-//TODO dodelat!!!!
+//TODO dodelat!!!! round!
               case 3:
               break;
 
@@ -1304,10 +1496,12 @@
             $format = '-sepia-tone %s%%';
           break;
 
-          case '':
-          break;
-
-          case '':
+          //bool setImageColorspace ( int $colorspace )
+          case 'setImageColorSpace':
+            $check = array(self::_C_STRING);
+            $version = '600';
+            $format = '-colorspace %s';
+            //TODO $this->picture->colorspace
           break;
 
           //bool setImageBackgroundColor ( mixed $background )
@@ -1322,6 +1516,21 @@
             $check = array(self::_C_STRING);
             $version = '600';
             $format = '-virtual-pixel %s';
+          break;
+
+          //bool setImageMatte ( bool $matte )
+          case 'setImageMatte':
+            $check = array(self::_C_BOOLEAN);
+            $version = '629';
+            $values[0] = self::getSign(!$values[0]);
+            $format = '%smatte';
+          break;
+
+          //bool setImageMatteColor ( mixed $matte )
+          case 'setImageMatteColor':
+            $check = array(self::_C_STRING);
+            $version = '600';
+            $format = '-mattecolor \'%s\'';
           break;
 
           //bool shadeImage ( bool $gray , float $azimuth , float $elevation )
@@ -1489,14 +1698,15 @@
             $format = '-wave %sx%s';
           break;
 
+/*
           case '':
           break;
-/*
-    public function transparent($color) {
+
+    //public function transparent($color) {
       return $this->execConvert("-transparent '{$color}'");
     }
 
-    public function transparentColor($color) {
+    //public function transparentColor($color) {
       return $this->execConvert("-transparent-color '{$color}'");
     }
 */
@@ -1715,130 +1925,135 @@
     }
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-    public static function isPicture($file) {
-      $result = NULL;
+    public static function isPicture($file) { //FIXME filtrovani na koncovky!
+      $result = NULL; //TODO vynechavat pdf?!
       if (file_exists($file) && filesize($file) > 0) {
-        $result = exec(sprintf('identify %s', escapeshellcmd($file)));
+        exec(self::IDENTIFY_FORMAT.escapeshellarg($file), $ret);
+        if (!empty($ret)) {
+          $result = self::parseData($ret[0]); //zpracovani prvniho radku
+        }
       }
       return (!empty($result));
     }
 //------------------------------------------------------------------------------
+    public function getImageBlob() {
+      $result = NULL;
+      $this->executeCmd();  //nachroustani prikazu
 
+      if (!empty($this->picture->_stream)) {
+        //probehla uprava
+        $result = file_get_contents($this->picture->_stream);
+      } else {
+        //nic se nezmenilo
+        $result = file_get_contents($this->picture->path);
+      }
+
+      return $result;
+    }
+//------------------------------------------------------------------------------
 /*
 //TODO vytridit!!!!!!
-    //public function getFormat($format) {
-      return $this->obrazek->format;
-    }
-
-    //public function setFormat($format) {
-      $this->obrazek->format = $format;
-      return $this;
-    }
 
    * Imagick::displayImage
    * Imagick::readImageFile($filehandle)
    *
 
-  //TODO append!?! nebo jen pro gify?
-    public function addImage($source)
+  // append!?! nebo jen pro gify?
+    //public function addImage($source)
     {
       //$source
     }
 
-    public function clear() {
+    //public function clear() {
       //vymazani obsahu streamu, ale ne tempu!
       $this->obrazek->stream = NULL;
       $this->obrazek = NULL;
     }
 
   //klonovani
-    public function cloneImage() {
+    //public function cloneImage() {
       //udela klon obrazku tim ze vytvori znovu sama sebe a vrati ukazatel
       $result = new self($this->obrazek->stream);
-//TODO melo by fungovat
+// melo by fungovat
       return $result;
     }
 
-    public function getImageDepth() {
-      $a = getimagesize($this->obrazek->stream);
 
-      return $a["bits"];
-    }
 
-    public function getImageSize() {
-      return filesize($this->obrazek->stream);
-    }
-
-    public function getImageMime() {
+    //public function getImageMime() {
       $a = getimagesize($this->obrazek->stream);
 
       return $a["mime"];
     }
 
-    public function sendImageHeader() {
+    //public function sendImageHeader() {
       $a = getimagesize($this->obrazek->stream);
 
       header("content-type: {$a["mime"]}");
     }
 
-    public function selfCommandLine($command) {
+    //public function selfCommandLine($command) {
       return $this->execConvert($command);
     }
 
-    public function setImageAlphaChannel($mode) {
+    //public function setImageAlphaChannel($mode) {
       //?????
       return $this->execConvert("-alpha {$mode}");
     }
 
-    public function setBackgroundColor($background) {
+    //public function setBackgroundColor($background) {
       return $this->execConvert("-background '{$background}'");
     }
 
   //Undefined, CMYK, Gray, HSB, HSL, HWB, Lab, OHTA, RGB, sRGB, Transparent, XYZ, YCbCr, YCC, YIQ, YPbPr, YUV
-    public function setImageColorSpace($colorspace) {
+    //public function setImageColorSpace($colorspace) {
       return $this->execConvert("-colorspace {$colorspace}");
     }
 
-    public function setImageCompression($compression) {
+    //public function setImageCompression($compression) {
       return $this->execConvert("-compress {$compression}");
     }
 
-    public function setImageCompressionQuality($quality = 75) {
+    //public function setImageCompressionQuality($quality = 75) {
       return $this->execConvert("-quality {$quality}");
     }
 
   //Red, Green, Blue, Alpha, Cyan, Magenta, Yellow, Black, Opacity, Index, RGB, RGBA, CMYK, CMYKA
-    public function setImageChannel($channel) {
+    //public function setImageChannel($channel) {
       return $this->execConvert("-channel {$channel}");
     }
 
-    public function setImageDepth($depth) {
+    //public function setImageDepth($depth) {
       return $this->execConvert("-depth {$depth}");
     }
 
   //Bilevel, Grayscale, GrayscaleMatte, Palette, PaletteMatte, TrueColor, TrueColorMatte, ColorSeparation, ColorSeparationMatte
-    public function setImageType($image_type) {
+    //public function setImageType($image_type) {
       return $this->execConvert("-type {$image_type}");
     }
 
   //Point, Hermite, Cubic, Box, Gaussian, Catrom, Triangle, Quadratic, Mitchell
-    public function setImageFilter($filter) {
+    //public function setImageFilter($filter) {
       return $this->execConvert("-filter {$filter}");
     }
 
-    public function setGravity($gravity) {
+    //public function setGravity($gravity) {
       return $this->execConvert("-gravity {$gravity}");
     }
 
-    public function setImageMatteColor($matte) {
-      return $this->execConvert("-mattecolor '{$matte}'");
-    }
-
-    public function setPointSize($point_size) {
+    //public function setPointSize($point_size) {
       return $this->execConvert("-pointsize {$point_size}");
     }
-*/
+    *
+This will take all of the source frames and will make them into one animated GIF image called animatespheres.gif. The -delay 20 argument will cause a 20 hundredths of a second delay between each frame, and the -loop 0 will cause the gif to loop over and over again.
+convert   -delay 20   -loop 0   sphere*.gif   animatespheres.gif
+* http://www.tjhsst.edu/~dhyatt/supercomp/n401a.html
+*
+* http://www.imagemagick.org/Usage/text/
 
+
+*/
+//
   }
 
   class ExceptionImagic extends Exception {}
@@ -1850,9 +2065,9 @@
    */
   final class ImagicDraw {
     private $draw = NULL;
-
+//FIXME dodelat zavislost na verzi imagicku!!!!
     public function __construct() {
-      $this->draw = new stdClass();
+      $this->draw = new stdClass;
     }
 
     //public function __call($name, $values) {
@@ -1944,7 +2159,7 @@
     public function polyline($coordinates) {
       $row = array();
       foreach ($coordinates as $polozka) {
-        $row[] = implode(",", $polozka);
+        $row[] = implode(',', $polozka);
       }
       $row = implode(' ', $row);
       $this->draw->cmd[] = sprintf('polyline %s', $row);
@@ -1991,6 +2206,27 @@
 
     public function setFontSize($pointsize) {
       $this->draw->convert[] = sprintf('-pointsize %s', $pointsize);
+      return $this;
+    }
+
+//hustota pisma
+    public function setTextKerning($kerning) {
+      //6.4.7-8, -kerning XX
+      $this->draw->convert[] = sprintf('-kerning %s', $kerning);
+      return $this;
+    }
+
+//letter spacing
+    public function setTextInterWordSpacing($spacing) {
+      //v6.4.8-0, -interword-spacing XX
+      $this->draw->convert[] = sprintf('-interword-spacing %s', $spacing);
+      return $this;
+    }
+
+//line spacing
+    public function setTextInterLineSpacing($spacing) {
+      //v6.5.5-8, -interline-spacing XX
+      $this->draw->convert[] = sprintf('-interline-spacing %s', $spacing);
       return $this;
     }
 
@@ -2128,7 +2364,7 @@ ok - bool fxImage ( string $expression [, int $channel = Imagick::CHANNEL_ALL ] 
 ok - bool gammaImage ( float $gamma [, int $channel = Imagick::CHANNEL_ALL ] )
 ok - bool gaussianBlurImage ( float $radius , float $sigma [, int $channel = Imagick::CHANNEL_ALL ] )
 dep - int getColorspace ( void )
-ok - int getCompression ( void )
+int getCompression ( void )
 int getCompressionQuality ( void )
 dep - string getCopyright ( void )
 dep - string getFilename ( void )
@@ -2140,7 +2376,7 @@ ok - Imagick getImage ( void )
 int getImageAlphaChannel ( void )
 string getImageArtifact ( string $artifact )
 ImagickPixel getImageBackgroundColor ( void )
-string getImageBlob ( void )
+ok - string getImageBlob ( void )
 array getImageBluePrimary ( void )
 ImagickPixel getImageBorderColor ( void )
 int getImageChannelDepth ( int $channel )
@@ -2154,13 +2390,13 @@ array getImageChannelStatistics ( void )
 Imagick getImageClipMask ( void )
 ImagickPixel getImageColormapColor ( int $index )
 int getImageColors ( void )
-int getImageColorspace ( void )
+ok - int getImageColorspace ( void )
 int getImageCompose ( void )
 int getImageCompression ( void )
 int getCompressionQuality ( void )
-int getImageDelay ( void )
-int getImageDepth ( void )
-int getImageDispose ( void )
+ok - int getImageDelay ( void )
+ok - int getImageDepth ( void )
+ok - int getImageDispose ( void )
 float getImageDistortion ( MagickWand $reference , int $metric )
 array getImageExtrema ( void )
 ok - string getImageFilename ( void )
@@ -2171,7 +2407,7 @@ int getImageGravity ( void )
 array getImageGreenPrimary ( void )
 ok - int getImageHeight ( void )
 array getImageHistogram ( void )
-int getImageIndex ( void )
+ok - int getImageIndex ( void )
 int getImageInterlaceScheme ( void )
 int getImageInterpolateMethod ( void )
 int getImageIterations ( void )
@@ -2192,7 +2428,7 @@ int getImageRenderingIntent ( void )
 array getImageResolution ( void )
 string getImagesBlob ( void )
 int getImageScene ( void )
-string getImageSignature ( void )
+ok - string getImageSignature ( void )
 int getImageSize ( void )
 int getImageTicksPerSecond ( void )
 float getImageTotalInkDensity ( void )
@@ -2220,8 +2456,8 @@ array getSize ( void )
 int getSizeOffset ( void )
 ok - array getVersion ( void )
 bool haldClutImage ( Imagick $clut [, int $channel = Imagick::CHANNEL_DEFAULT ] )
-bool hasNextImage ( void )
-bool hasPreviousImage ( void )
+ok - bool hasNextImage ( void )
+ok - bool hasPreviousImage ( void )
 ok - array identifyImage ([ bool $appendRawOutput = false ] )
 ok - bool implodeImage ( float $radius )
 bool importImagePixels ( int $x , int $y , int $width , int $height , string $map , int $storage , array $pixels )
@@ -2243,7 +2479,7 @@ ok - bool motionBlurImage ( float $radius , float $sigma , float $angle [, int $
 ok - bool negateImage ( bool $gray [, int $channel = Imagick::CHANNEL_ALL ] )
 ok - bool newImage ( int $cols , int $rows , mixed $background [, string $format ] )
 ok - bool newPseudoImage ( int $columns , int $rows , string $pseudoString )
-bool nextImage ( void )
+ok - bool nextImage ( void )
 ok - bool normalizeImage ([ int $channel = Imagick::CHANNEL_ALL ] )
 ok - bool oilPaintImage ( float $radius )
 bool opaquePaintImage ( mixed $target , mixed $fill , float $fuzz , bool $invert [, int $channel = Imagick::CHANNEL_DEFAULT ] )
@@ -2258,7 +2494,7 @@ bool pingImageFile ( resource $filehandle [, string $fileName ] )
 ok - bool polaroidImage ( ImagickDraw $properties , float $angle )
 ok - bool posterizeImage ( int $levels , bool $dither )
 ok! - bool previewImages ( int $preview )
-bool previousImage ( void )
+ok - bool previousImage ( void )
 bool profileImage ( string $name , string $profile )
 bool quantizeImage ( int $numberColors , int $colorspace , int $treedepth , bool $dither , bool $measureError )
 bool quantizeImages ( int $numberColors , int $colorspace , int $treedepth , bool $dither , bool $measureError )
@@ -2290,7 +2526,7 @@ ok - bool separateImageChannel ( int $channel )
 ok - bool sepiaToneImage ( float $threshold )
 bool setBackgroundColor ( mixed $background )
 bool setColorspace ( int $COLORSPACE )
-ok - bool setCompression ( int $compression )
+bool setCompression ( int $compression )
 bool setCompressionQuality ( int $quality )
 bool setFilename ( string $filename )
 bool setFirstIterator ( void )
@@ -2307,25 +2543,25 @@ bool setImageBorderColor ( mixed $border )
 bool setImageChannelDepth ( int $channel , int $depth )
 bool setImageClipMask ( Imagick $clip_mask )
 bool setImageColormapColor ( int $index , ImagickPixel $color )
-bool setImageColorspace ( int $colorspace )
+ok - bool setImageColorspace ( int $colorspace )
 bool setImageCompose ( int $compose )
 bool setImageCompression ( int $compression )
-bool setImageCompressionQuality ( int $quality )
-bool setImageDelay ( int $delay )
-bool setImageDepth ( int $depth )
-bool setImageDispose ( int $dispose )
+ok - bool setImageCompressionQuality ( int $quality )
+ok - bool setImageDelay ( int $delay )
+ok - bool setImageDepth ( int $depth )
+ok - bool setImageDispose ( int $dispose )
 bool setImageExtent ( int $columns , int $rows )
 ok - bool setImageFilename ( string $filename )
 ok - bool setImageFormat ( string $format )
 bool setImageGamma ( float $gamma )
 bool setImageGravity ( int $gravity )
 bool setImageGreenPrimary ( float $x , float $y )
-bool setImageIndex ( int $index )
+ok - bool setImageIndex ( int $index )
 bool setImageInterlaceScheme ( int $interlace_scheme )
 bool setImageInterpolateMethod ( int $method )
 bool setImageIterations ( int $iterations )
-bool setImageMatte ( bool $matte )
-bool setImageMatteColor ( mixed $matte )
+ok - bool setImageMatte ( bool $matte )
+ok - bool setImageMatteColor ( mixed $matte )
 bool setImageOpacity ( float $opacity )
 bool setImageOrientation ( int $orientation )
 ok - bool setImagePage ( int $width , int $height , int $x , int $y )

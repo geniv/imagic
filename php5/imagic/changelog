@@ -1,6 +1,38 @@
+2011-08-19  server  <geniv.radek@gmail.com>
+
+ * optimalizace identifikace obrazku
+ * vnitrni funkce na parsovani identify dat predelana na statickou metodu
+ * v testovacim php odstranena kontrola na ipa predelana na: extension_loaded()
+ * pozn: podpora animaci jeste neni kompletni!!!, trida jej umi zpracovat a nacist ale ne upravit! (k verzi 1.68)
+
+
+2011-08-15  server  <geniv.radek@gmail.com>
+
+ * pridano: getImageCompression, setImageCompression, getImageCompressionQuality, setImageCompressionQuality,
+            getImageMimeType, getImageSize, setImageDepth, getImageDepth, getImageColorspace, getImageChannel
+
+
+2011-08-13  server  <geniv.radek@gmail.com>
+
+ * pridano nekolik systemovych promennych a vylepseno parsrovani z identify
+ * pridany funkce getImageSignature, getImageDispose, setImageDispose
+
+
+2011-08-10  server  <geniv.radek@gmail.com>
+
+ * opraveno nekolik chybek,
+ * zabudovana zakladni podpora gif obrazku
+ * podpora vraceni indexu, posouvani indexu a overovani jestli jde posouvat index
+ * vylepsen konstruktor
+ * pridano pro gif setImageColorSpace, getCompressionQuality, setTextKerning, setTextInterWordSpacing, setTextInterLineSpacing
+ * pridano nastavovaci funkce setImageMatte, setImageMatteColor
+ * pridany dispose konstanty
+ * pro gif: getNumberImages, nextImage, hasNextImage, hasPreviousImage, getImageIndex, setImageIndex
+
+
 2011-06-20  geniv  <geniv.radek@gmail.com>
 
- * obejevena chyba pri przoovani GIFu, pri vetsi predelavce se to predela
+ * objevena chyba pri zpracovani GIFu, pri vetsi predelavce se to predela
 
 
 2011-06-15  geniv  <geniv.radek@gmail.com>
@@ -16,4 +48,3 @@
  * verzovaji se da zjistit ve funkci: getVersion pod indexem: versionImagic
  * pridana funkce na overovani jestli je soubor obrazkem
  * overeni zda se jedna obrazkek bylo pridano i u konstruktoru
-
