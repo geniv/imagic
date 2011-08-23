@@ -38,7 +38,7 @@
   $draw->setFillColor('#999999')
         ->setFont('Bookman-DemiItalic')
         ->setFontSize(30)
-        ->annotation(10, 40, 'nekoukej, kukuč :D')
+        //->annotation(10, 40, 'nekoukej, kukuč :D')
         ;
 
   //$canvas = new Imagic($picture5, 'img');
@@ -59,7 +59,8 @@
 
   //var_dump(Imagic::isPicture($load_picture));
 
-  $image = new Imagic($load_picture, 'img');
+  $rand = rand(-50, 50);
+  $image = new Imagic(array('files' => $load_picture, 'path' => 'img'));
   //var_dump($image);
   $image//->setTempPath('img')
         //->setImageFilename($picture2)
@@ -160,9 +161,19 @@
         //->compositeImage($canvas, Imagic::COMPOSITE_OVER, 100, 100)
         //->borderImage('blue', 2, 2)
         //->contrastImage(false)
+        //->commentImage('huuuuuu')
+        ->annotateImage($draw, 30, 30, $rand, 'a')
         ->writeImage($out1);
+        //var_dump($image->getImageProperty('comment'));
+
 //echo $image->getImage();
 //var_dump($image->identifyImage());
+
+
+    //var_dump(Imagic::seraprateRGB('#aabbcd'));
+    //var_dump($image->getMinimalVersion());
+
+  //var_dump($image->getImageProperties('*', false));
 
   //$image->writeImage($out1);
   //var_dump($image->getImageBlob());
@@ -204,7 +215,7 @@
     $draw->setFillColor('#999999');
     $draw->setFont('Bookman-DemiItalic');
     $draw->setFontSize(30);
-    $draw->annotation(10, 40, 'nekoukej, kukuč :D');
+    //$draw->annotation(10, 40, 'nekoukej, kukuč :D');
 
     $canvas = new Imagick();
     //$canvas->newImage(50, 50, 'gold');
@@ -322,7 +333,12 @@
     //$image->borderImage('blue', 2, 2);
     //$image->contrastImage(false);
     //var_dump($image->getImageCompressionQuality(), $image->getCompressionQuality());
+    //$image->commentImage('huuuuuu');
+    $image->annotateImage($draw, 30, 30, $rand, 'a');
     $image->writeImage($out2);
+
+    //var_dump($image->getImageProperties('*', false));
+    //var_dump($image->getImageProperty('comment'));
 
     //var_dump($image->getImageBlob());
 

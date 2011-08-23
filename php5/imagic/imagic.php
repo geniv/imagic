@@ -11,15 +11,21 @@
  * example using: http://eclecticdjs.com/mike/tutorials/php/imagemagick/
  *                http://valokuva.org/?cat=1
  *                http://www.imagemagick.org/script/command-line-options.php
+ *                http://www.imagemagick.org/Usage/
+ *                http://www.php.net/manual/en/imagick.examples-1.php
+ *
  *
  * manual page: http://www.php.net/manual/en/class.imagick.php
  *              http://www.php.net/manual/en/book.imagick.php
+ *              http://www.php.net/manual/en/class.imagickdraw.php
+ *
  *
  * use: http://imagemagick.org/script/escape.php
  *
  * use with: Fluent Interfaces
  */
-//TODO projit: http://www.rubblewebs.co.uk/imagemagick/
+//TODO projit:
+//http://www.rubblewebs.co.uk/imagemagick/
 //http://www.imagemagick.org/Usage/anim_basics/
 //http://valokuva.org/?cat=1
 //http://www.imagemagick.org/script/command-line-options.php
@@ -40,9 +46,9 @@
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
     //const IMAGICMIN = '6.5.0';
-    const VERSION = 1.68;
+    const VERSION = 1.75;
 
-//TODO zabudovat pak i array iterator????
+//TODO zabudovat pak i array iterator! pro GIF!
 
     //channel
     const CHANNEL_DEFAULT = 'Default';
@@ -312,13 +318,31 @@
     const VIRTUALPIXELMETHOD_VERTICALTILE = 'VerticalTile';
     const VIRTUALPIXELMETHOD_VERTICALTILEEDGE = 'VerticalTileEdge';
 
+    //font styletype
+    const STYLETYPE_ANY = 'Any';
+    const STYLETYPE_ITALIC = 'Italic';
+    const STYLETYPE_NORMAL = 'Normal';
+    const STYLETYPE_OBLIQUE = 'Oblique';
+
+    //font stretch
+    const STRETCH_ANY = 'Any';
+    const STRETCH_CONDENSED = 'Condensed';
+    const STRETCH_EXPANDED = 'Expanded';
+    const STRETCH_EXTRACONDENSED = 'ExtraCondensed';
+    const STRETCH_EXTRAEXPANDED = 'ExtraExpanded';
+    const STRETCH_NORMAL = 'Normal';
+    const STRETCH_SEMICONDENSED = 'SemiCondensed';
+    const STRETCH_SEMIEXPANDED = 'SemiExpanded';
+    const STRETCH_ULTRACONDENSED = 'UltraCondensed';
+    const STRETCH_ULTRAEXPANDED = 'UltraExpanded';
+
     //internal cmdtype
     const _CMDTYPE_NORMAL = 'normal';
     const _CMDTYPE_SPECIAL = 'special';
 
 //------------------------------------------------------------------------------
-    //redy - vytvareni instance Imagic
-    public function __construct($files = NULL, $path = NULL) {
+    //redy - vytvareni instance Imagic, v settings muze byt: files (pro vstupni soubory), path (pro tempfile)
+    public function __construct(array $settings = array()) {
       try {
         $this->picture = new stdClass;
         $this->picture->path = NULL;
@@ -349,6 +373,9 @@
         $this->picture->anim_index = 0;
         $this->picture->anim_count = 0;
 
+        $files = self::isFill($settings, 'files');
+        $path = self::isFill($settings, 'path');
+
         if (!empty($path) && is_writable($path)) {
           $this->setTempPath($path);  //pokud se tu extra nastavi path
           $this->getTempFile();  //nacteni streamu
@@ -358,11 +385,15 @@
         if (!empty($files)) {
           if (is_array($files)) {
            //TODO muze nacitat i pole cest -> konvert na gif
+           //automaticky typ na GIF
+           //pocet obrazku
           } else {
             if (file_exists($files)) {
               $this->getIdentify($files); //nacteni identifikace
               $this->copyPath2Stream($files);
-            } else { throw new ExceptionImagic(sprintf('picture %s doen not exist!', $files)); }
+            } else {
+              throw new ExceptionImagic(sprintf('picture %s doen not exist!', $files));
+            }
           }
         }
 
@@ -371,9 +402,11 @@
       }
     }
 
-    //redy
+    //redy - stara se o auto uklid
     public function __destruct() {
-      $this->destroy();
+      if (!empty($this->picture)) {
+        $this->destroy();
+      }
     }
 //------------------------------------------------------------------------------
     //kopirovani path do _stream
@@ -437,15 +470,18 @@
       return $result;
     }
 //------------------------------------------------------------------------------
-    //array getVersion ( void )
+    private static $version = NULL;
+    //array getVersion ( void ) - ukladane do statickeho atributu
     public static function getVersion($key = NULL) {
-      $version = exec('identify -version | head -n 1 | cut -c 10-');
-      preg_match('/\d\.\d\.\d/', $version, $match);
-      $result = array('versionNumber' => $match[0],
-                      'versionInteger' => (int) str_replace('.', '', $match[0]),
-                      'versionString' => $version,
-                      'versionImagic' => self::VERSION);
-      return (!empty($key) ? $result[$key] : $result);
+      if (is_null(self::$version)) {
+        exec('identify -version | head -n 1 | cut -c 10-', $ret);
+        preg_match('/\d\.\d\.\d/', $ret[0], $match);
+        self::$version = array ('versionNumber' => $match[0],
+                                'versionInteger' => (int) str_replace('.', '', $match[0]),
+                                'versionString' => $ret[0],
+                                'versionImagic' => self::VERSION);
+      }
+      return (!empty($key) ? self::$version[$key] : self::$version);
     }
 //------------------------------------------------------------------------------
     //zpracovani dat z ifentify na asociativni pole
@@ -643,13 +679,19 @@
 
     //int getImageSize ( void )
     public function getImageSize() {
+      //FIXME provest nejdriv exec?!
       return filesize($this->picture->_stream);
     }
 
     //string getImageMimeType ( void )
     public function getImageMimeType() {
-      $ret = getimagesize($this->picture->_stream);
-      return $ret['mime'];
+      $result = NULL;
+      //FIXME provest nejdriv exec?!
+      if (!empty($this->picture->_stream)) {
+        $ret = getimagesize($this->picture->_stream);
+        $result = $ret['mime'];
+      }
+      return $result;
     }
 
     //getImageChannelDepth
@@ -657,7 +699,48 @@
       return $this->picture->channel;
     }
 
+    //array getImageProperties ([ string $pattern = "*" [, bool $only_names = true ]] )
+    public function getImageProperties($pattern = '*', $only_names = true) {
+      $result = NULL;
+      if (self::checkVersion(636)) {
+        exec(sprintf('identify -format %%[%s] %s', $pattern, escapeshellarg($this->picture->_stream)), $ret);
+        $result = array();
+        foreach ($ret as $row) {
+          if (!empty($row)) {
+            $expl = explode('=', $row, 2);
+            if ($only_names) {
+              $result[$expl[0]] = $expl[1];
+            } else {
+              $result[] = $expl[0];
+            }
+          }
+        }
+      }
+      return $result;
+    }
+
+    //string getImageProperty ( string $name )
+    public function getImageProperty($name) {
+      //TODO hodnota z identify!!! napred si nacte z getImageProperties
+      $ret = $this->getImageProperties();
+      return $ret[$name];
+    }
+
+    //staticka metoda na kontrolu funkce
+    private static function checkVersion($version) {
+      return (self::getVersion('versionInteger') >= $version);
+    }
+
     //TODO getImageLoop, setImageLoop
+    public function getImageLoop() {
+      return $this->picture->anim_loop; //TODO doaplikovat do exec!
+    }
+//TODO sety nacpat do __call
+    public function setImageLoop($loop) {
+      $this->picture->anim_loop = $loop;
+      return $this;
+    }
+
 //------------------------------------------------------------------------------
     //array identifyImage ([ bool $appendRawOutput = false ] )
     public function identifyImage($appendRawOutput = false) {
@@ -888,7 +971,6 @@
     //pretezovana metoda pro efekty
     public function __call($name, $values) {
       try {
-
         if (empty($this->picture->_stream)) {
           $this->getTempFile();  //nacteni streamu, pokud neexistuje
         }
@@ -941,17 +1023,32 @@
             $format = '-lat %sx%s%s';
           break;
 
+          //bool annotateImage ( ImagickDraw $draw_settings , float $angle , string $text )
+          //bool annotateImage ( ImagickDraw $draw_settings , float $x , float $y , string $text )
+          //bool annotateImage ( ImagickDraw $draw_settings , float $x , float $y, float $angle_x, float $angle_y , string $text )  //???
+
           //bool annotateImage ( ImagickDraw $draw_settings , float $x , float $y , float $angle , string $text )
           case 'annotateImage':
             $check = array(self::_C_IMAGICDRAW, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_NUMERIC, self::_C_STRING);
             $version = '600';
+//var_dump($values);
             $draw = $values[0]->getDataImagicDraw();
             $x = $values[1];
             $y = $values[2];
             $angle = $values[3];
             $text = $values[4];
-            $values = array($draw, $angle, $angle, $x, $y, $text);
-            $format = '%s -annotate %sx%s+%s+%s "%s"';
+            $values = array($draw, $angle, $x, $y, $text);
+            $format = '%s -annotate %sx+%s+%s "%s"';  //TODO pridat pretezovani
+/*
+//FIXME toto dodelat a nejak naimplementovat!!!!!
+-annotate degrees text
+-annotate XdegreesxYdegrees text
+-annotate XdegreesxYdegrees {+-}tx{+-}ty text
+*
+-annotate degrees text
+-annotate XdegreesxYdegrees text
+-annotate XdegreesxYdegrees {+-}tx{+-}ty text
+*/
           break;
 
           //bool blurImage ( float $radius , float $sigma [, int $channel ] )
@@ -1203,9 +1300,11 @@
           break;
 
           //bool haldClutImage ( Imagick $clut [, int $channel = Imagick::CHANNEL_DEFAULT ] )
+/*
           case '':
             //TODO nastudovat a dodealt?!
           break;
+*/
 
           //bool implodeImage ( float $radius )
           case 'implodeImage':
@@ -1526,6 +1625,20 @@
             $format = '%smatte';
           break;
 
+          //bool setImageProperty ( string $name , string $value )
+          case 'setImageProperty':
+            $check = array(self::_C_STRING, self::_C_STRING);
+            $version = '632';
+            $format = '-set \'%s\' \'%s\'';
+          break;
+
+          //bool commentImage ( string $comment )
+          case 'commentImage':
+            $check = array(self::_C_STRING);
+            $version = '600';
+            $format = '-comment \'%s\'';
+          break;
+
           //bool setImageMatteColor ( mixed $matte )
           case 'setImageMatteColor':
             $check = array(self::_C_STRING);
@@ -1768,12 +1881,10 @@
                       );
 //var_dump($task['cmd']);
         $this->picture->task[] = $task;
-
+//var_dump($task['cmd']); //TODO taky zapinat debugem!!!!
       } catch (ExceptionImagic $e) {
         echo $e;
       }
-//var_dump($task['cmd']); //TODO taky zapinat debugem!!!!
-
       return $this;
     }
 //------------------------------------------------------------------------------
@@ -1819,8 +1930,7 @@
             $cmdnexttype = $nextindex['cmdtype'];
           }
 
-          if ($this->picture->version['versionInteger'] >= $task['version']) {
-
+          if ($this->checkVersion($task['version'])) {
             switch ($cmdtype) {
               case self::_CMDTYPE_NORMAL:
                 $meziarray[] = $cmd;
@@ -1865,49 +1975,69 @@
 //FIXME dodelat osetreni stavu a vypis techto stavu!!!!
       if ($count == $final) {
         //ze streamu do destinace
-        $this->setState(true, 101);
+        $this->setState(true, 101); //TODO jinak tady ty stavy?!!!!!
 
       } else {
         $this->setState(false, 102);
       }
+    }
 
+//TODO rozsirit tuto metodu i do ImagicDraw!!! ale az bude hotova __call !!!!!
+//zjisetni optimalni (maximalni potrebne) verze Imagicu
+    public function getMinimalVersion() {
+      $result = 600;
+      foreach ($this->picture->task as $task) {
+        if ($task['version'] > $result) {
+          $result = $task['version']; //pokud nelezne vetsi tak ho prepise
+        }
+      }
+      return (int) $result;
     }
 //------------------------------------------------------------------------------
-    //redy
+    //redy - dle cisla vraci cislo v textu se znamenkem
     private static function getSignValue($value) {
       return sprintf('%s%s', ($value >= 0 ? '+' : '-'), $value);
     }
 
-    //redy
+    //redy - dle bool vraci znamenka
     private static function getSign($value) {
       return ($value ? '+' : '-');
     }
 
+    //redy - pokud je index v poli
     private static function isNull($array, $key, $default = '') {
       return (is_array($array) && array_key_exists($key, $array) ? $array[$key] : $default);
     }
 
-    //redy
+    //redy - poluj je index v poli neprazdny
     private static function isFill($array, $key, $default = '') {
       return (!empty($array[$key]) ? $array[$key] : $default);
     }
 
-    //redy
-    private static function seraprateRGB($hex) {
+    //redy - separace RGB barev (z 3 a 6 pismenych hex barev) na dec interpretaci
+    public static function seraprateRGB($hex) {
       $result = NULL;
-      $hex = array_slice(str_split($hex), 1); //orezani #
+      if (!empty($hex)) {
+        $_hex = str_split(substr($hex, 1)); //odebrani #
+        switch (strlen($hex)) {
+          case 3 + 1: //pro 3 znakove barvy
+            foreach ($_hex as $val) {
+              $result[] = hexdec($val.$val);
+            }
+          break;
 
-      if (count($hex) == 6) { //slouceni po dvojcich a prevedeni cisla na dec
-        $chunk = array_chunk($hex, 2);
-        foreach ($chunk as $kod) {
-          $result[] = hexdec(implode('', $kod));
+          case 6 + 1: //pro 6 znakove barvy
+            $_hex = array_chunk($_hex, 2);
+            foreach ($_hex as $val) {
+              $result[] = hexdec(implode('', $val));
+            }
+          break;
         }
       }
-
       return $result;
     }
 
-    //redy
+    //redy - vraceni znamenka pro best-fit roztahovani obrazku
     private static function getBestfitValue($values, $index, $columns, $rows) {
       return (self::isFill($values, $index, false) ? '' : ($columns > 0 && $rows > 0 ? '!' : ''));
     }
@@ -1925,8 +2055,10 @@
     }
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
-    public static function isPicture($file) { //FIXME filtrovani na koncovky!
-      $result = NULL; //TODO vynechavat pdf?!
+    public static function isPicture($file, $type = array()) {
+      //FIXME filtrovani na koncovky!
+      //array('pdf', 'svg')
+      $result = NULL;
       if (file_exists($file) && filesize($file) > 0) {
         exec(self::IDENTIFY_FORMAT.escapeshellarg($file), $ret);
         if (!empty($ret)) {
@@ -1951,109 +2083,7 @@
       return $result;
     }
 //------------------------------------------------------------------------------
-/*
-//TODO vytridit!!!!!!
 
-   * Imagick::displayImage
-   * Imagick::readImageFile($filehandle)
-   *
-
-  // append!?! nebo jen pro gify?
-    //public function addImage($source)
-    {
-      //$source
-    }
-
-    //public function clear() {
-      //vymazani obsahu streamu, ale ne tempu!
-      $this->obrazek->stream = NULL;
-      $this->obrazek = NULL;
-    }
-
-  //klonovani
-    //public function cloneImage() {
-      //udela klon obrazku tim ze vytvori znovu sama sebe a vrati ukazatel
-      $result = new self($this->obrazek->stream);
-// melo by fungovat
-      return $result;
-    }
-
-
-
-    //public function getImageMime() {
-      $a = getimagesize($this->obrazek->stream);
-
-      return $a["mime"];
-    }
-
-    //public function sendImageHeader() {
-      $a = getimagesize($this->obrazek->stream);
-
-      header("content-type: {$a["mime"]}");
-    }
-
-    //public function selfCommandLine($command) {
-      return $this->execConvert($command);
-    }
-
-    //public function setImageAlphaChannel($mode) {
-      //?????
-      return $this->execConvert("-alpha {$mode}");
-    }
-
-    //public function setBackgroundColor($background) {
-      return $this->execConvert("-background '{$background}'");
-    }
-
-  //Undefined, CMYK, Gray, HSB, HSL, HWB, Lab, OHTA, RGB, sRGB, Transparent, XYZ, YCbCr, YCC, YIQ, YPbPr, YUV
-    //public function setImageColorSpace($colorspace) {
-      return $this->execConvert("-colorspace {$colorspace}");
-    }
-
-    //public function setImageCompression($compression) {
-      return $this->execConvert("-compress {$compression}");
-    }
-
-    //public function setImageCompressionQuality($quality = 75) {
-      return $this->execConvert("-quality {$quality}");
-    }
-
-  //Red, Green, Blue, Alpha, Cyan, Magenta, Yellow, Black, Opacity, Index, RGB, RGBA, CMYK, CMYKA
-    //public function setImageChannel($channel) {
-      return $this->execConvert("-channel {$channel}");
-    }
-
-    //public function setImageDepth($depth) {
-      return $this->execConvert("-depth {$depth}");
-    }
-
-  //Bilevel, Grayscale, GrayscaleMatte, Palette, PaletteMatte, TrueColor, TrueColorMatte, ColorSeparation, ColorSeparationMatte
-    //public function setImageType($image_type) {
-      return $this->execConvert("-type {$image_type}");
-    }
-
-  //Point, Hermite, Cubic, Box, Gaussian, Catrom, Triangle, Quadratic, Mitchell
-    //public function setImageFilter($filter) {
-      return $this->execConvert("-filter {$filter}");
-    }
-
-    //public function setGravity($gravity) {
-      return $this->execConvert("-gravity {$gravity}");
-    }
-
-    //public function setPointSize($point_size) {
-      return $this->execConvert("-pointsize {$point_size}");
-    }
-    *
-This will take all of the source frames and will make them into one animated GIF image called animatespheres.gif. The -delay 20 argument will cause a 20 hundredths of a second delay between each frame, and the -loop 0 will cause the gif to loop over and over again.
-convert   -delay 20   -loop 0   sphere*.gif   animatespheres.gif
-* http://www.tjhsst.edu/~dhyatt/supercomp/n401a.html
-*
-* http://www.imagemagick.org/Usage/text/
-
-
-*/
-//
   }
 
   class ExceptionImagic extends Exception {}
@@ -2065,14 +2095,153 @@ convert   -delay 20   -loop 0   sphere*.gif   animatespheres.gif
    */
   final class ImagicDraw {
     private $draw = NULL;
-//FIXME dodelat zavislost na verzi imagicku!!!!
+
     public function __construct() {
       $this->draw = new stdClass;
     }
 
-    //public function __call($name, $values) {
-      //TODO nasadit tady to pretezovani!
-    //}
+    //pretezovani metod pro draw
+    public function __call($name, $values) {
+      try {
+//FIXME dodelat zavislost na verzi imagicku!!!!
+
+        $check = NULL;
+        $format = NULL;
+        $version = NULL;
+        $cmdtype = self::_CMDTYPE_NORMAL;
+//cmd/convert
+        switch ($name) {
+/*
+          case '':
+            $check = array(self::_C_NUMERIC, self::_C_NUMERIC);
+            $version = '629';
+            $format = '-adaptive-resize %sx%s%s';
+          break;
+*/
+/*
+          bool affine ( array $affine )
+          bool annotation ( float $x , float $y , string $text )
+          bool arc ( float $sx , float $sy , float $ex , float $ey , float $sd , float $ed )
+          bool bezier ( array $coordinates )
+          bool circle ( float $ox , float $oy , float $px , float $py )
+          bool clear ( void )
+          ImagickDraw clone ( void )
+          bool color ( float $x , float $y , int $paintMethod )
+          bool comment ( string $comment )
+          bool composite ( int $compose , float $x , float $y , float $width , float $height , Imagick $compositeWand )
+          ImagickDraw __construct ( void )
+          bool destroy ( void )
+          bool ellipse ( float $ox , float $oy , float $rx , float $ry , float $start , float $end )
+          string getClipPath ( void )
+          int getClipRule ( void )
+          int getClipUnits ( void )
+          ImagickPixel getFillColor ( void )
+          float getFillOpacity ( void )
+          int getFillRule ( void )
+          string getFont ( void )
+          string getFontFamily ( void )
+          float getFontSize ( void )
+          int getFontStyle ( void )
+          int getFontWeight ( void )
+          int getGravity ( void )
+          bool getStrokeAntialias ( void )
+          ImagickPixel getStrokeColor ( void )
+          array getStrokeDashArray ( void )
+          float getStrokeDashOffset ( void )
+          int getStrokeLineCap ( void )
+          int getStrokeLineJoin ( void )
+          int getStrokeMiterLimit ( void )
+          float getStrokeOpacity ( void )
+          float getStrokeWidth ( void )
+          int getTextAlignment ( void )
+          bool getTextAntialias ( void )
+          int getTextDecoration ( void )
+          string getTextEncoding ( void )
+          ImagickPixel getTextUnderColor ( void )
+          string getVectorGraphics ( void )
+          bool line ( float $sx , float $sy , float $ex , float $ey )
+          bool matte ( float $x , float $y , int $paintMethod )
+          bool pathClose ( void )
+          bool pathCurveToAbsolute ( float $x1 , float $y1 , float $x2 , float $y2 , float $x , float $y )
+          bool pathCurveToQuadraticBezierAbsolute ( float $x1 , float $y1 , float $x , float $y )
+          bool pathCurveToQuadraticBezierRelative ( float $x1 , float $y1 , float $x , float $y )
+          bool pathCurveToQuadraticBezierSmoothAbsolute ( float $x , float $y )
+          bool pathCurveToQuadraticBezierSmoothRelative ( float $x , float $y )
+          bool pathCurveToRelative ( float $x1 , float $y1 , float $x2 , float $y2 , float $x , float $y )
+          bool pathCurveToSmoothAbsolute ( float $x2 , float $y2 , float $x , float $y )
+          bool pathCurveToSmoothRelative ( float $x2 , float $y2 , float $x , float $y )
+          bool pathEllipticArcAbsolute ( float $rx , float $ry , float $x_axis_rotation , bool $large_arc_flag , bool $sweep_flag , float $x , float $y )
+          bool pathEllipticArcRelative ( float $rx , float $ry , float $x_axis_rotation , bool $large_arc_flag , bool $sweep_flag , float $x , float $y )
+          bool pathFinish ( void )
+          bool pathLineToAbsolute ( float $x , float $y )
+          bool pathLineToHorizontalAbsolute ( float $x )
+          bool pathLineToHorizontalRelative ( float $x )
+          bool pathLineToRelative ( float $x , float $y )
+          bool pathLineToVerticalAbsolute ( float $y )
+          bool pathLineToVerticalRelative ( float $y )
+          bool pathMoveToAbsolute ( float $x , float $y )
+          bool pathMoveToRelative ( float $x , float $y )
+          bool pathStart ( void )
+          bool point ( float $x , float $y )
+          bool polygon ( array $coordinates )
+          bool polyline ( array $coordinates )
+          bool pop ( void )
+          bool popClipPath ( void )
+          bool popDefs ( void )
+          bool popPattern ( void )
+          bool push ( void )
+          bool pushClipPath ( string $clip_mask_id )
+          bool pushDefs ( void )
+          bool pushPattern ( string $pattern_id , float $x , float $y , float $width , float $height )
+          bool rectangle ( float $x1 , float $y1 , float $x2 , float $y2 )
+          bool render ( void )
+          bool rotate ( float $degrees )
+          bool roundRectangle ( float $x1 , float $y1 , float $x2 , float $y2 , float $rx , float $ry )
+          bool scale ( float $x , float $y )
+          bool setClipPath ( string $clip_mask )
+          bool setClipRule ( int $fill_rule )
+          bool setClipUnits ( int $clip_units )
+          bool setFillAlpha ( float $opacity )
+          bool setFillColor ( ImagickPixel $fill_pixel )
+          bool setFillOpacity ( float $fillOpacity )
+          bool setFillPatternURL ( string $fill_url )
+          bool setFillRule ( int $fill_rule )
+          ok - bool setFont ( string $font_name )
+          bool setFontFamily ( string $font_family )
+          ok - bool setFontSize ( float $pointsize )
+          ok - bool setFontStretch ( int $fontStretch )
+          ok - bool setFontStyle ( int $style )
+          ok - bool setFontWeight ( int $font_weight )
+          bool setGravity ( int $gravity )
+          bool setStrokeAlpha ( float $opacity )
+          bool setStrokeAntialias ( bool $stroke_antialias )
+          bool setStrokeColor ( ImagickPixel $stroke_pixel )
+          bool setStrokeDashArray ( array $dashArray )
+          bool setStrokeDashOffset ( float $dash_offset )
+          bool setStrokeLineCap ( int $linecap )
+          bool setStrokeLineJoin ( int $linejoin )
+          bool setStrokeMiterLimit ( int $miterlimit )
+          bool setStrokeOpacity ( float $stroke_opacity )
+          bool setStrokePatternURL ( string $stroke_url )
+          bool setStrokeWidth ( float $stroke_width )
+          bool setTextAlignment ( int $alignment )
+          bool setTextAntialias ( bool $antiAlias )
+          bool setTextDecoration ( int $decoration )
+          bool setTextEncoding ( string $encoding )
+          bool setTextUnderColor ( ImagickPixel $under_color )
+          bool setVectorGraphics ( string $xml )
+          ok - bool setViewbox ( int $x1 , int $y1 , int $x2 , int $y2 )
+          ok - bool skewX ( float $degrees )
+          ok - bool skewY ( float $degrees )
+          ok - bool translate ( float $x , float $y )
+*/
+        }
+
+      } catch (ExceptionImagicDraw $e) {
+        echo $e;
+      }
+      return $this;
+    }
 
 //FIXME dodelat zbyvajici funkce a overit ktere spadaji pod cmd drawu a nebo convertu!!!
 //a nasledne i ten pak predelat taky na fluent interface...! a overovani typu etc...
@@ -2199,7 +2368,6 @@ convert   -delay 20   -loop 0   sphere*.gif   animatespheres.gif
     }
 
     public function setFont($font_name) {
-      //FIXME overit existenci fontu?!
       $this->draw->convert[] = sprintf('-font "%s"', $font_name);
       return $this;
     }
@@ -2208,6 +2376,34 @@ convert   -delay 20   -loop 0   sphere*.gif   animatespheres.gif
       $this->draw->convert[] = sprintf('-pointsize %s', $pointsize);
       return $this;
     }
+//http://www.imagemagick.org/Usage/fonts/
+//TODO k temto a ostatnim funkcim dodelat gettery!
+
+    //bool ImagickDraw::setFontStretch ( int $fontStretch )
+    public function setFontStretch($fontStretch) {
+      $this->draw->convert[] = sprintf('-stretch %s', $fontStretch);
+      return $this;
+    }
+
+    //bool ImagickDraw::setFontStyle ( int $style )
+    public function setFontStyle($style) {
+      $this->draw->convert[] = sprintf('-style %s', $style);
+      return $this;
+    }
+
+/*
+All	No effect.
+Bold	Same as fontWeight = 700.
+Bolder	Add 100 to font weight if currently ≤ 800.
+Lighter	Subtract 100 to font weight if currently ≤ 100.
+Normal	Same as fontWeight = 400.
+*/
+    //bool ImagickDraw::setFontWeight ( int $font_weight )
+    public function setFontWeight($font_weight) { //~551
+      $this->draw->convert[] = sprintf('-weight %s', $font_weight);
+      return $this;
+    }
+
 
 //hustota pisma
     public function setTextKerning($kerning) {
@@ -2296,7 +2492,7 @@ convert   -delay 20   -loop 0   sphere*.gif   animatespheres.gif
   class ExceptionImagicDraw extends Exception {}
 
 /*
-Function Available:
+Imagic Function Available:
 --------------------------------------------------------------------------------
 ok - bool adaptiveBlurImage ( float $radius , float $sigma [, int $channel = Imagick::CHANNEL_DEFAULT ] )
 ok - bool adaptiveResizeImage ( int $columns , int $rows [, bool $bestfit = false ] )
@@ -2323,7 +2519,7 @@ Imagick coalesceImages ( void )
 dep - bool colorFloodfillImage ( mixed $fill , float $fuzz , mixed $bordercolor , int $x , int $y )
 ok! - bool colorizeImage ( mixed $colorize , mixed $opacity )
 Imagick combineImages ( int $channelType )
-dep - bool commentImage ( string $comment )
+ok - bool commentImage ( string $comment )
 array compareImageChannels ( Imagick $image , int $channelType , int $metricType )
 Imagick compareImageLayers ( int $method )
 array compareImages ( Imagick $compare , int $metric )
@@ -2420,8 +2616,8 @@ ok - array getImagePage ( void )
 ImagickPixel getImagePixelColor ( int $x , int $y )
 string getImageProfile ( string $name )
 array getImageProfiles ([ string $pattern = "*" [, bool $only_names = true ]] )
-array getImageProperties ([ string $pattern = "*" [, bool $only_names = true ]] )
-string getImageProperty ( string $name )
+ok - array getImageProperties ([ string $pattern = "*" [, bool $only_names = true ]] )
+ok - string getImageProperty ( string $name )
 array getImageRedPrimary ( void )
 Imagick getImageRegion ( int $width , int $height , int $x , int $y )
 int getImageRenderingIntent ( void )
@@ -2566,7 +2762,7 @@ bool setImageOpacity ( float $opacity )
 bool setImageOrientation ( int $orientation )
 ok - bool setImagePage ( int $width , int $height , int $x , int $y )
 bool setImageProfile ( string $name , string $profile )
-bool setImageProperty ( string $name , string $value )
+ok - bool setImageProperty ( string $name , string $value )
 bool setImageRedPrimary ( float $x , float $y )
 bool setImageRenderingIntent ( int $rendering_intent )
 bool setImageResolution ( float $x_resolution , float $y_resolution )
@@ -2623,15 +2819,198 @@ bool writeImageFile ( resource $filehandle )
 bool writeImages ( string $filename , bool $adjoin )
 bool writeImagesFile ( resource $filehandle )
 --------------------------------------------------------------------------------
+ImagicDraw Function Available:
+--------------------------------------------------------------------------------
+bool affine ( array $affine )
+bool annotation ( float $x , float $y , string $text )
+bool arc ( float $sx , float $sy , float $ex , float $ey , float $sd , float $ed )
+bool bezier ( array $coordinates )
+bool circle ( float $ox , float $oy , float $px , float $py )
+bool clear ( void )
+ImagickDraw clone ( void )
+bool color ( float $x , float $y , int $paintMethod )
+bool comment ( string $comment )
+bool composite ( int $compose , float $x , float $y , float $width , float $height , Imagick $compositeWand )
+ImagickDraw __construct ( void )
+bool destroy ( void )
+bool ellipse ( float $ox , float $oy , float $rx , float $ry , float $start , float $end )
+string getClipPath ( void )
+int getClipRule ( void )
+int getClipUnits ( void )
+ImagickPixel getFillColor ( void )
+float getFillOpacity ( void )
+int getFillRule ( void )
+string getFont ( void )
+string getFontFamily ( void )
+float getFontSize ( void )
+int getFontStyle ( void )
+int getFontWeight ( void )
+int getGravity ( void )
+bool getStrokeAntialias ( void )
+ImagickPixel getStrokeColor ( void )
+array getStrokeDashArray ( void )
+float getStrokeDashOffset ( void )
+int getStrokeLineCap ( void )
+int getStrokeLineJoin ( void )
+int getStrokeMiterLimit ( void )
+float getStrokeOpacity ( void )
+float getStrokeWidth ( void )
+int getTextAlignment ( void )
+bool getTextAntialias ( void )
+int getTextDecoration ( void )
+string getTextEncoding ( void )
+ImagickPixel getTextUnderColor ( void )
+string getVectorGraphics ( void )
+bool line ( float $sx , float $sy , float $ex , float $ey )
+bool matte ( float $x , float $y , int $paintMethod )
+bool pathClose ( void )
+bool pathCurveToAbsolute ( float $x1 , float $y1 , float $x2 , float $y2 , float $x , float $y )
+bool pathCurveToQuadraticBezierAbsolute ( float $x1 , float $y1 , float $x , float $y )
+bool pathCurveToQuadraticBezierRelative ( float $x1 , float $y1 , float $x , float $y )
+bool pathCurveToQuadraticBezierSmoothAbsolute ( float $x , float $y )
+bool pathCurveToQuadraticBezierSmoothRelative ( float $x , float $y )
+bool pathCurveToRelative ( float $x1 , float $y1 , float $x2 , float $y2 , float $x , float $y )
+bool pathCurveToSmoothAbsolute ( float $x2 , float $y2 , float $x , float $y )
+bool pathCurveToSmoothRelative ( float $x2 , float $y2 , float $x , float $y )
+bool pathEllipticArcAbsolute ( float $rx , float $ry , float $x_axis_rotation , bool $large_arc_flag , bool $sweep_flag , float $x , float $y )
+bool pathEllipticArcRelative ( float $rx , float $ry , float $x_axis_rotation , bool $large_arc_flag , bool $sweep_flag , float $x , float $y )
+bool pathFinish ( void )
+bool pathLineToAbsolute ( float $x , float $y )
+bool pathLineToHorizontalAbsolute ( float $x )
+bool pathLineToHorizontalRelative ( float $x )
+bool pathLineToRelative ( float $x , float $y )
+bool pathLineToVerticalAbsolute ( float $y )
+bool pathLineToVerticalRelative ( float $y )
+bool pathMoveToAbsolute ( float $x , float $y )
+bool pathMoveToRelative ( float $x , float $y )
+bool pathStart ( void )
+bool point ( float $x , float $y )
+bool polygon ( array $coordinates )
+bool polyline ( array $coordinates )
+bool pop ( void )
+bool popClipPath ( void )
+bool popDefs ( void )
+bool popPattern ( void )
+bool push ( void )
+bool pushClipPath ( string $clip_mask_id )
+bool pushDefs ( void )
+bool pushPattern ( string $pattern_id , float $x , float $y , float $width , float $height )
+bool rectangle ( float $x1 , float $y1 , float $x2 , float $y2 )
+bool render ( void )
+bool rotate ( float $degrees )
+bool roundRectangle ( float $x1 , float $y1 , float $x2 , float $y2 , float $rx , float $ry )
+bool scale ( float $x , float $y )
+bool setClipPath ( string $clip_mask )
+bool setClipRule ( int $fill_rule )
+bool setClipUnits ( int $clip_units )
+bool setFillAlpha ( float $opacity )
+bool setFillColor ( ImagickPixel $fill_pixel )
+bool setFillOpacity ( float $fillOpacity )
+bool setFillPatternURL ( string $fill_url )
+bool setFillRule ( int $fill_rule )
+ok - bool setFont ( string $font_name )
+bool setFontFamily ( string $font_family )
+ok - bool setFontSize ( float $pointsize )
+ok - bool setFontStretch ( int $fontStretch )
+ok - bool setFontStyle ( int $style )
+ok - bool setFontWeight ( int $font_weight )
+bool setGravity ( int $gravity )
+bool setStrokeAlpha ( float $opacity )
+bool setStrokeAntialias ( bool $stroke_antialias )
+bool setStrokeColor ( ImagickPixel $stroke_pixel )
+bool setStrokeDashArray ( array $dashArray )
+bool setStrokeDashOffset ( float $dash_offset )
+bool setStrokeLineCap ( int $linecap )
+bool setStrokeLineJoin ( int $linejoin )
+bool setStrokeMiterLimit ( int $miterlimit )
+bool setStrokeOpacity ( float $stroke_opacity )
+bool setStrokePatternURL ( string $stroke_url )
+bool setStrokeWidth ( float $stroke_width )
+bool setTextAlignment ( int $alignment )
+bool setTextAntialias ( bool $antiAlias )
+bool setTextDecoration ( int $decoration )
+bool setTextEncoding ( string $encoding )
+bool setTextUnderColor ( ImagickPixel $under_color )
+bool setVectorGraphics ( string $xml )
+ok - bool setViewbox ( int $x1 , int $y1 , int $x2 , int $y2 )
+ok - bool skewX ( float $degrees )
+ok - bool skewY ( float $degrees )
+ok - bool translate ( float $x , float $y )
+--------------------------------------------------------------------------------
 ok = redy, ok! = redy with edit, dep = deprecated
 */
 
 
-//TODO takto
-//header( "Content-Type: image/{$Imagick->getImageFormat()}" );
-//echo $Imagick->getImageBlob( );
+/*
+//TODO vytridit!!!!!!
 
-//gray scale: -fx '0.29900*R+0.58700*G+0.11400*B'
-//-colorspace gray
-//"blue", "#0000ff", "rgb(0,0,255)", "cmyk(100,100,100,10)"
+    //public function clear() {
+      //vymazani obsahu streamu, ale ne tempu!
+      $this->obrazek->stream = NULL;
+      $this->obrazek = NULL;
+    }
+
+  //klonovani
+    //public function cloneImage() {
+      //udela klon obrazku tim ze vytvori znovu sama sebe a vrati ukazatel
+      $result = new self($this->obrazek->stream);
+// melo by fungovat
+      return $result;
+    }
+
+    //public function setImageAlphaChannel($mode) {
+      //?????
+      return $this->execConvert("-alpha {$mode}");
+    }
+
+    //public function setBackgroundColor($background) {
+      return $this->execConvert("-background '{$background}'");
+    }
+
+  //Undefined, CMYK, Gray, HSB, HSL, HWB, Lab, OHTA, RGB, sRGB, Transparent, XYZ, YCbCr, YCC, YIQ, YPbPr, YUV
+    //public function setImageColorSpace($colorspace) {
+      return $this->execConvert("-colorspace {$colorspace}");
+    }
+
+    //public function setImageCompression($compression) {
+      return $this->execConvert("-compress {$compression}");
+    }
+
+    //public function setImageCompressionQuality($quality = 75) {
+      return $this->execConvert("-quality {$quality}");
+    }
+
+  //Red, Green, Blue, Alpha, Cyan, Magenta, Yellow, Black, Opacity, Index, RGB, RGBA, CMYK, CMYKA
+    //public function setImageChannel($channel) {
+      return $this->execConvert("-channel {$channel}");
+    }
+
+    //public function setImageDepth($depth) {
+      return $this->execConvert("-depth {$depth}");
+    }
+
+  //Bilevel, Grayscale, GrayscaleMatte, Palette, PaletteMatte, TrueColor, TrueColorMatte, ColorSeparation, ColorSeparationMatte
+    //public function setImageType($image_type) {
+      return $this->execConvert("-type {$image_type}");
+    }
+
+  //Point, Hermite, Cubic, Box, Gaussian, Catrom, Triangle, Quadratic, Mitchell
+    //public function setImageFilter($filter) {
+      return $this->execConvert("-filter {$filter}");
+    }
+
+    //public function setGravity($gravity) {
+      return $this->execConvert("-gravity {$gravity}");
+    }
+
+    //public function setPointSize($point_size) {
+      return $this->execConvert("-pointsize {$point_size}");
+    }
+    *
+This will take all of the source frames and will make them into one animated GIF image called animatespheres.gif. The -delay 20 argument will cause a 20 hundredths of a second delay between each frame, and the -loop 0 will cause the gif to loop over and over again.
+convert   -delay 20   -loop 0   sphere*.gif   animatespheres.gif
+* http://www.tjhsst.edu/~dhyatt/supercomp/n401a.html
+*
+* http://www.imagemagick.org/Usage/text/
+*/
 ?>
