@@ -181,7 +181,7 @@
   $log1[] = $image->getImageFilename();
   $log1[] = $image->getImageFormat();
   $log1[] = $image->getImageMimeType();
-  $log1[] = $image->getImageSize();
+  $log1[] = $image->getImageLength();
   $log1[] = 'w:'.$image->getImageWidth();
   $log1[] = 'h:'.$image->getImageHeight();
   $log1[] = $image->getImageDelay();
@@ -345,7 +345,7 @@
     $log2[] = $image->getImageFilename();
     $log2[] = $image->getImageFormat();
     $log2[] = $image->getImageMimeType();
-    $log2[] = $image->getImageSize();
+    $log2[] = $image->getImageLength();
     $log2[] = 'w:'.$image->getImageWidth();
     $log2[] = 'h:'.$image->getImageHeight();
     $log2[] = $image->getImageDelay();

@@ -16,8 +16,8 @@
  *
  *
  * manual page: http://www.php.net/manual/en/class.imagick.php
- *              http://www.php.net/manual/en/book.imagick.php
  *              http://www.php.net/manual/en/class.imagickdraw.php
+ *              http://www.php.net/manual/en/book.imagick.php
  *
  *
  * use: http://imagemagick.org/script/escape.php
@@ -46,7 +46,7 @@
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
     //const IMAGICMIN = '6.5.0';
-    const VERSION = 1.75;
+    const VERSION = 1.755;
 
 //TODO zabudovat pak i array iterator! pro GIF!
 
@@ -677,8 +677,16 @@
       return $this;
     }
 
+/* Strict Standards: Imagick::getImageSize is deprecated.
     //int getImageSize ( void )
     public function getImageSize() {
+      //FIXME provest nejdriv exec?!
+      return filesize($this->picture->_stream);
+    }
+*/
+
+    //int getImageLength ( void )
+    public function getImageLength() {
       //FIXME provest nejdriv exec?!
       return filesize($this->picture->_stream);
     }
@@ -1041,6 +1049,9 @@
             $format = '%s -annotate %sx+%s+%s "%s"';  //TODO pridat pretezovani
 /*
 //FIXME toto dodelat a nejak naimplementovat!!!!!
+* http://www.imagemagick.org/Usage/misc/#annotate
+* http://www.html46.com/Annotate_at_IM.html
+*
 -annotate degrees text
 -annotate XdegreesxYdegrees text
 -annotate XdegreesxYdegrees {+-}tx{+-}ty text
@@ -2607,7 +2618,7 @@ ok - int getImageIndex ( void )
 int getImageInterlaceScheme ( void )
 int getImageInterpolateMethod ( void )
 int getImageIterations ( void )
-int getImageLength ( void )
+ok - int getImageLength ( void )
 string getImageMagickLicense ( void )
 bool getImageMatte ( void )
 ImagickPixel getImageMatteColor ( void )
@@ -2625,7 +2636,7 @@ array getImageResolution ( void )
 string getImagesBlob ( void )
 int getImageScene ( void )
 ok - string getImageSignature ( void )
-int getImageSize ( void )
+dep - int getImageSize ( void )
 int getImageTicksPerSecond ( void )
 float getImageTotalInkDensity ( void )
 int getImageType ( void )

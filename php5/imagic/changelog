@@ -1,3 +1,8 @@
+2011-08-24  server  <geniv.radek@gmail.com>
+
+ * nahrazeni metody: getImageSize (deprecated) na getImageLength
+
+
 2011-08-23  server  <geniv.radek@gmail.com>
 
  * optimalizace funkce seraprateRGB (zverejneni metody a rozsireni na 3 a 6 (+1: #) znakove barvy)
