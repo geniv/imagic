@@ -46,9 +46,10 @@
     const TEMPDIR = '.tmp';
     const IMAGICPREFIX = 'tempimagic';
     //const IMAGICMIN = '6.5.0';
-    const VERSION = 1.755;
+    const VERSION = 1.76;
 
 //TODO zabudovat pak i array iterator! pro GIF!
+//ArrayAccess, ArrayIterator?!
 
     //channel
     const CHANNEL_DEFAULT = 'Default';
@@ -342,7 +343,7 @@
 
 //------------------------------------------------------------------------------
     //redy - vytvareni instance Imagic, v settings muze byt: files (pro vstupni soubory), path (pro tempfile)
-    public function __construct(array $settings = array()) {
+    public function __construct($settings = array(), $pathtemp = NULL) {
       try {
         $this->picture = new stdClass;
         $this->picture->path = NULL;
@@ -373,8 +374,18 @@
         $this->picture->anim_index = 0;
         $this->picture->anim_count = 0;
 
-        $files = self::isFill($settings, 'files');
-        $path = self::isFill($settings, 'path');
+        if (is_array($settings)) {  //pokud je settings pole
+          $files = self::isFill($settings, 'files');
+          $path = self::isFill($settings, 'path');
+          if (empty($files)) {  //pokud nenajde index files tak pole preda cele do files s tim ze jde pole obrazku na GIF
+            $files = $settings;
+          }
+        } else {  //pokuj je text tak je predpokladano ze se jedna o files
+          $files = $settings;
+          if (!empty($pathtemp)) {  //pokud je druhy parametr text, predpoklada se ze se jedna o path na temp
+            $path = $pathtemp;
+          }
+        }
 
         if (!empty($path) && is_writable($path)) {
           $this->setTempPath($path);  //pokud se tu extra nastavi path

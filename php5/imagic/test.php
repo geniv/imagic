@@ -60,7 +60,8 @@
   //var_dump(Imagic::isPicture($load_picture));
 
   $rand = rand(-50, 50);
-  $image = new Imagic(array('files' => $load_picture, 'path' => 'img'));
+  //$image = new Imagic(array('files' => $load_picture, 'path' => 'img'));
+  $image = new Imagic($load_picture, 'img');
   //var_dump($image);
   $image//->setTempPath('img')
         //->setImageFilename($picture2)
