@@ -345,7 +345,8 @@
 
     $log2[] = $image->getImageFilename();
     $log2[] = $image->getImageFormat();
-    $log2[] = $image->getImageMimeType();
+    //$log2[] = $image->getImageMimeType();
+    $log2[] = '---';
     $log2[] = $image->getImageLength();
     $log2[] = 'w:'.$image->getImageWidth();
     $log2[] = 'h:'.$image->getImageHeight();
